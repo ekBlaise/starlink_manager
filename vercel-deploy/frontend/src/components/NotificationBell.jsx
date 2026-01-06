@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { useAuth, API } from "App";
+import { useAuth, API } from "../App";
 import { Bell, Check, Trash2, X } from "lucide-react";
-import { Button } from "components/ui/button";
-import { Badge } from "components/ui/badge";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "components/ui/popover";
-import { ScrollArea } from "components/ui/scroll-area";
+} from "./ui/popover";
+import { ScrollArea } from "./ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 
 export const NotificationBell = () => {

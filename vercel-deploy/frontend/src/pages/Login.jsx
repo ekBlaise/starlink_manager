@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Satellite, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { Button } from "components/ui/button";
-import { Input } from "components/ui/input";
-import { Label } from "components/ui/label";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import { toast } from "sonner";
-import { useAuth, API } from "App";
+import { useAuth, API } from "../App";
 
 export default function Login() {
   const auth = useAuth();
