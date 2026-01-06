@@ -188,14 +188,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "User Authentication - Login"
-    - "Accounts CRUD Operations"
-    - "Billing Records Management"
-    - "Support Tickets Management"
-    - "Dashboard Statistics"
-    - "Notifications System"
+    - "Login Flow"
+    - "Dashboard Display"
+    - "Accounts Management"
+    - "Account Details"
+    - "Settings Page"
+    - "Navigation and Layout"
   stuck_tasks: []
-  test_all: false
+  test_all: true
   test_priority: "high_first"
 
 agent_communication:
