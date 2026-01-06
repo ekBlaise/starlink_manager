@@ -1,0 +1,13 @@
+{
+  "name": "starlink-manager-api",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.16",
+    "twilio": "^5.4.0",
+    "uuid": "^11.0.3"
+  }
+}
