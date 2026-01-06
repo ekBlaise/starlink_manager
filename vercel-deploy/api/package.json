@@ -1,6 +1,7 @@
 {
   "name": "starlink-manager-api",
   "version": "1.0.0",
+  "main": "[...path].js",
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "bcryptjs": "^2.4.3",
