@@ -134,6 +134,20 @@ class StarlinkAPITester:
             self.log_test("Auth Me Endpoint", False, f"Response: {response}")
             return False
 
+    def test_update_user_profile(self):
+        """Test updating user profile (PUT /api/auth/me)"""
+        update_data = {
+            "phone_number": "+1234567890"
+        }
+        
+        success, response = self.make_request('PUT', 'auth/me', update_data, 200)
+        if success and response.get('phone_number') == "+1234567890":
+            self.log_test("Update User Profile", True)
+            return True
+        else:
+            self.log_test("Update User Profile", False, f"Response: {response}")
+            return False
+
     def test_dashboard_stats(self):
         """Test dashboard stats endpoint"""
         success, response = self.make_request('GET', 'dashboard/stats', None, 200)
