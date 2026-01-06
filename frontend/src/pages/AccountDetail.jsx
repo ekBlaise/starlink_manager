@@ -387,7 +387,7 @@ export default function AccountDetail() {
         {/* Account Info Card */}
         <Card className="bg-card border-border/40 mb-6" data-testid="account-info-card">
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               <div>
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Account Email</Label>
                 {editing ? (
@@ -413,16 +413,39 @@ export default function AccountDetail() {
                 )}
               </div>
               <div>
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Billing Day</Label>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Billing Day (1-31)</Label>
                 {editing ? (
                   <Select value={String(editData.billing_day)} onValueChange={(v) => setEditData({ ...editData, billing_day: parseInt(v) })}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {[...Array(28)].map((_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Day {i + 1}</SelectItem>)}
+                      {[...Array(31)].map((_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Day {i + 1}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 ) : (
                   <p className="font-medium mt-1">Day {account.billing_day}</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Subscription Status</Label>
+                {editing ? (
+                  <Select value={editData.status || "active"} onValueChange={(v) => setEditData({ ...editData, status: v })}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active"><CheckCircle className="w-3 h-3 inline mr-1 text-green-500" /> Active</SelectItem>
+                      <SelectItem value="inactive"><Ban className="w-3 h-3 inline mr-1 text-yellow-500" /> Inactive</SelectItem>
+                      <SelectItem value="cancelled"><Ban className="w-3 h-3 inline mr-1 text-red-500" /> Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="font-medium mt-1 flex items-center gap-1">
+                    {account.status === 'active' ? (
+                      <><CheckCircle className="w-4 h-4 text-green-500" /> Active</>
+                    ) : account.status === 'cancelled' ? (
+                      <><Ban className="w-4 h-4 text-red-500" /> Cancelled</>
+                    ) : (
+                      <><Ban className="w-4 h-4 text-yellow-500" /> Inactive</>
+                    )}
+                  </p>
                 )}
               </div>
             </div>
