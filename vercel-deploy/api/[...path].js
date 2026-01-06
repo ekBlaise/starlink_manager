@@ -1,9 +1,9 @@
-import { neon } from '@neondatabase/serverless';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
-import nodemailer from 'nodemailer';
-import twilio from 'twilio';
+const { neon } = require('@neondatabase/serverless');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 
 // Lazy initialization for database
 let sql = null;
@@ -117,7 +117,7 @@ function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Session-ID');
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   setCorsHeaders(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   
@@ -415,4 +415,4 @@ export default async function handler(req, res) {
     console.error('API Error:', error.message, error.stack);
     return res.status(500).json({ detail: error.message || 'Internal server error' });
   }
-}
+};
