@@ -81,7 +81,7 @@ export default function AccountDetail({ auth }) {
   const [paymentForm, setPaymentForm] = useState({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "" });
   const [ticketForm, setTicketForm] = useState({ title: "", description: "", priority: "medium" });
   const [extenderForm, setExtenderForm] = useState({ name: "", ip_address: "", location: "" });
-  const [deviceForm, setDeviceForm] = useState({ name: "", mac_address: "", device_type: "unknown", extender_id: "" });
+  const [deviceForm, setDeviceForm] = useState({ name: "", mac_address: "", device_type: "unknown", extender_id: "main_router" });
 
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
 
@@ -266,7 +266,7 @@ export default function AccountDetail({ auth }) {
       if (response.ok) {
         toast.success("Device added");
         setShowDeviceModal(false);
-        setDeviceForm({ name: "", mac_address: "", device_type: "unknown", extender_id: "" });
+        setDeviceForm({ name: "", mac_address: "", device_type: "unknown", extender_id: "main_router" });
         fetchDevices();
         fetchAccount();
       }
@@ -514,10 +514,10 @@ export default function AccountDetail({ auth }) {
                       </div>
                       <div className="form-group">
                         <Label>Connected To Extender</Label>
-                        <Select value={deviceForm.extender_id} onValueChange={(v) => setDeviceForm({ ...deviceForm, extender_id: v })}>
+                        <Select value={deviceForm.extender_id || "main_router"} onValueChange={(v) => setDeviceForm({ ...deviceForm, extender_id: v === "main_router" ? "" : v })}>
                           <SelectTrigger><SelectValue placeholder="Main Router" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Main Router</SelectItem>
+                            <SelectItem value="main_router">Main Router</SelectItem>
                             {extenders.map((ext) => <SelectItem key={ext.extender_id} value={ext.extender_id}>{ext.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
