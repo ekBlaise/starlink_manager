@@ -495,6 +495,11 @@ class StarlinkAPITester:
         print("\n🧹 Cleanup Tests")
         self.test_delete_account()
         
+        # Notifications Tests
+        print("\n🔔 Notifications Tests")
+        self.test_get_notifications()
+        self.test_get_notifications_count()
+        
         return self.get_summary()
 
     def get_summary(self):
