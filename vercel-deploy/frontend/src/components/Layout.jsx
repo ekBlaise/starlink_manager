@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "@/App";
+import { useAuth } from "App";
 import { 
   LayoutDashboard, 
   Satellite, 
@@ -9,16 +9,16 @@ import {
   X
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import NotificationBell from "@/components/NotificationBell";
+} from "components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "components/ui/avatar";
+import NotificationBell from "components/NotificationBell";
 
 export const Layout = ({ children }) => {
   const navigate = useNavigate();

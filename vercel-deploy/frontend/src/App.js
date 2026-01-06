@@ -1,16 +1,16 @@
 import { useEffect, useState, useRef, createContext, useContext } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "components/ui/sonner";
 
 // Pages
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import Accounts from "@/pages/Accounts";
-import AccountDetail from "@/pages/AccountDetail";
-import Settings from "@/pages/Settings";
-import Layout from "@/components/Layout";
+import Login from "pages/Login";
+import Register from "pages/Register";
+import Dashboard from "pages/Dashboard";
+import Accounts from "pages/Accounts";
+import AccountDetail from "pages/AccountDetail";
+import Settings from "pages/Settings";
+import Layout from "components/Layout";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 export const API = `${BACKEND_URL}/api`;
