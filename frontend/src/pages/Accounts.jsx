@@ -334,13 +334,24 @@ export default function Accounts() {
                       </div>
                     </div>
                   </div>
-                  <Badge className={account.is_online ? 'badge-online' : 'badge-offline'}>
-                    {account.is_online ? (
-                      <><Wifi className="w-3 h-3 mr-1" /> Online</>
-                    ) : (
-                      <><WifiOff className="w-3 h-3 mr-1" /> Offline</>
+                  <div className="flex flex-col gap-1 items-end">
+                    <Badge className={account.is_online ? 'badge-online' : 'badge-offline'}>
+                      {account.is_online ? (
+                        <><Wifi className="w-3 h-3 mr-1" /> Online</>
+                      ) : (
+                        <><WifiOff className="w-3 h-3 mr-1" /> Offline</>
+                      )}
+                    </Badge>
+                    {account.status !== 'active' && (
+                      <Badge className={account.status === 'cancelled' ? 'badge-offline' : 'badge-medium'}>
+                        {account.status === 'cancelled' ? (
+                          <><Ban className="w-3 h-3 mr-1" /> Cancelled</>
+                        ) : (
+                          <><Ban className="w-3 h-3 mr-1" /> Inactive</>
+                        )}
+                      </Badge>
                     )}
-                  </Badge>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm">
