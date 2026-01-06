@@ -1,0 +1,188 @@
+/* Starlink Manager App Styles */
+
+/* Sidebar styles */
+.sidebar {
+    @apply w-64 bg-card border-r border-border fixed left-0 top-0 h-screen overflow-y-auto;
+}
+
+.sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors duration-200 rounded-sm mx-2;
+}
+
+.sidebar-link.active {
+    @apply text-primary bg-primary/10 border-l-2 border-primary;
+}
+
+/* Main content area */
+.main-content {
+    @apply ml-64 min-h-screen bg-background;
+}
+
+/* Page header */
+.page-header {
+    @apply px-8 py-6 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10;
+}
+
+/* Stats cards */
+.stat-card {
+    @apply bg-card border border-border/40 rounded-sm p-6 transition-colors duration-300 hover:border-primary/30;
+}
+
+.stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    @apply text-3xl font-bold tracking-tight;
+}
+
+.stat-label {
+    @apply text-sm text-muted-foreground mt-1;
+}
+
+/* Account cards */
+.account-card {
+    @apply bg-card border border-border/40 rounded-sm p-5 transition-all duration-300 hover:border-primary/50 cursor-pointer;
+}
+
+.account-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Table styles */
+.data-table {
+    @apply w-full;
+}
+
+.data-table th {
+    @apply text-left text-xs font-medium text-muted-foreground uppercase tracking-wider py-3 px-4 border-b border-border;
+}
+
+.data-table td {
+    @apply py-4 px-4 border-b border-border/50;
+}
+
+.data-table tr:hover td {
+    @apply bg-secondary/30;
+}
+
+/* Badge variants */
+.badge-online {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+}
+
+.badge-offline {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+
+.badge-open {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+}
+
+.badge-closed {
+    @apply bg-gray-500/20 text-gray-400 border border-gray-500/30;
+}
+
+.badge-high {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+
+.badge-medium {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+}
+
+.badge-low {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+}
+
+/* Form styles */
+.form-group {
+    @apply space-y-2;
+}
+
+.form-label {
+    @apply text-sm font-medium text-foreground;
+}
+
+.form-input {
+    @apply w-full bg-input/50 border border-border rounded-sm px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-200;
+}
+
+.form-textarea {
+    @apply w-full bg-input/50 border border-border rounded-sm px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-200 resize-none;
+}
+
+/* Empty state */
+.empty-state {
+    @apply flex flex-col items-center justify-center py-16 text-center;
+}
+
+.empty-state-icon {
+    @apply w-16 h-16 text-muted-foreground/50 mb-4;
+}
+
+.empty-state-title {
+    @apply text-lg font-medium text-foreground mb-2;
+}
+
+.empty-state-description {
+    @apply text-sm text-muted-foreground max-w-sm;
+}
+
+/* Loading skeleton */
+.skeleton {
+    @apply bg-secondary animate-pulse rounded-sm;
+}
+
+/* Device list */
+.device-item {
+    @apply flex items-center justify-between p-4 bg-secondary/30 rounded-sm border border-border/30 hover:border-primary/30 transition-colors duration-200;
+}
+
+/* Extender card */
+.extender-card {
+    @apply bg-secondary/50 border border-border/40 rounded-sm p-4;
+}
+
+/* Responsive sidebar */
+@media (max-width: 1024px) {
+    .sidebar {
+        @apply w-full h-auto fixed bottom-0 left-0 top-auto border-t border-r-0 z-50;
+    }
+    
+    .main-content {
+        @apply ml-0 pb-20;
+    }
+    
+    .sidebar nav {
+        @apply flex justify-around py-2;
+    }
+    
+    .sidebar-link {
+        @apply flex-col gap-1 text-xs px-2 py-2 mx-0;
+    }
+    
+    .sidebar-link span:last-child {
+        @apply hidden sm:block;
+    }
+}
+
+/* Auth page styles */
+.auth-container {
+    @apply min-h-screen flex items-center justify-center bg-background;
+}
+
+.auth-card {
+    @apply w-full max-w-md bg-card border border-border/40 rounded-sm p-8;
+}
+
+.auth-logo {
+    @apply flex items-center justify-center gap-3 mb-8;
+}
+
+.auth-divider {
+    @apply flex items-center gap-4 my-6;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    @apply flex-1 h-px bg-border;
+}
