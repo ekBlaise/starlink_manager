@@ -327,11 +327,16 @@ export default function AccountDetail() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{account.account_name}</h1>
               <Badge className={account.is_online ? 'badge-online' : 'badge-offline'}>
                 {account.is_online ? <><Wifi className="w-3 h-3 mr-1" /> Online</> : <><WifiOff className="w-3 h-3 mr-1" /> Offline</>}
               </Badge>
+              {account.status !== 'active' && (
+                <Badge className={account.status === 'cancelled' ? 'badge-offline' : 'badge-medium'}>
+                  {account.status === 'cancelled' ? <><Ban className="w-3 h-3 mr-1" /> Cancelled</> : <><Ban className="w-3 h-3 mr-1" /> Inactive</>}
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1 text-muted-foreground mt-1">
               <MapPin className="w-4 h-4" />
