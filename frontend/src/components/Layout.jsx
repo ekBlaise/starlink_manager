@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import NotificationBell from "@/components/NotificationBell";
 
 export const Layout = ({ children }) => {
   const navigate = useNavigate();
@@ -112,14 +113,17 @@ export const Layout = ({ children }) => {
             </div>
             <span className="font-bold">Starlink Manager</span>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            data-testid="mobile-menu-toggle"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              data-testid="mobile-menu-toggle"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
@@ -153,8 +157,13 @@ export const Layout = ({ children }) => {
         )}
       </header>
 
+      {/* Desktop Header with Notifications */}
+      <div className="hidden lg:flex fixed top-0 left-64 right-0 h-16 items-center justify-end px-8 z-40 glass">
+        <NotificationBell />
+      </div>
+
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen" data-testid="main-content">
+      <main className="lg:ml-64 pt-16 min-h-screen" data-testid="main-content">
         {children}
       </main>
     </div>
