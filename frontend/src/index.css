@@ -39,10 +39,6 @@
         @apply border-border;
     }
     
-    html {
-        @apply dark;
-    }
-    
     body {
         @apply bg-background text-foreground antialiased;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -97,22 +93,24 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/30;
+    background: hsl(220 10% 40%);
 }
 
 /* Glass effect */
 .glass {
-    @apply backdrop-blur-xl bg-background/80 border-b border-white/5;
+    backdrop-filter: blur(12px);
+    background: hsl(var(--background) / 0.8);
+    border-bottom: 1px solid hsl(0 0% 100% / 0.05);
 }
 
 /* Glow effects */
 .glow-primary {
-    box-shadow: 0 0 20px rgba(0, 163, 255, 0.3);
+    box-shadow: 0 0 20px hsl(200 100% 50% / 0.3);
 }
 
 /* Button hover animations */
 .btn-hover {
-    @apply transition-all duration-200;
+    transition: transform 0.2s, background-color 0.2s;
 }
 
 .btn-hover:hover {
@@ -121,16 +119,11 @@
 
 /* Card hover effect */
 .card-hover {
-    @apply transition-colors duration-300;
+    transition: border-color 0.3s;
 }
 
 .card-hover:hover {
-    @apply border-primary/50;
-}
-
-/* Custom focus styles */
-.focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+    border-color: hsl(200 100% 50% / 0.5);
 }
 
 /* Data display styling */
@@ -165,7 +158,8 @@
 }
 
 .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
+    animation: fade-in 0.3s ease-out forwards;
+    opacity: 0;
 }
 
 /* Stagger animation delays */
