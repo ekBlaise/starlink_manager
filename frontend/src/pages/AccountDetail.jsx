@@ -83,7 +83,7 @@ export default function AccountDetail() {
   const [showDeviceModal, setShowDeviceModal] = useState(false);
 
   // Form states
-  const [paymentForm, setPaymentForm] = useState({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "" });
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "", is_paid: true });
   const [ticketForm, setTicketForm] = useState({ title: "", description: "", priority: "medium" });
   const [extenderForm, setExtenderForm] = useState({ name: "", ip_address: "", location: "" });
   const [deviceForm, setDeviceForm] = useState({ name: "", mac_address: "", device_type: "unknown", extender_id: "main_router" });
