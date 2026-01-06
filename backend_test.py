@@ -425,13 +425,19 @@ class StarlinkAPITester:
         
         # Authentication Tests
         print("\n🔐 Authentication Tests")
-        if not self.test_user_registration():
-            print("❌ Registration failed - stopping tests")
-            return self.get_summary()
-            
-        if not self.test_user_login():
-            print("❌ Login failed - stopping tests")
-            return self.get_summary()
+        
+        # First try with existing test credentials
+        if self.test_existing_user_login():
+            print("✅ Using existing test credentials")
+        else:
+            # Fall back to registration flow
+            if not self.test_user_registration():
+                print("❌ Registration failed - stopping tests")
+                return self.get_summary()
+                
+            if not self.test_user_login():
+                print("❌ Login failed - stopping tests")
+                return self.get_summary()
             
         self.test_auth_me()
         
