@@ -277,13 +277,25 @@ export default function Accounts() {
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-40" data-testid="status-filter">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filter" />
+              <Wifi className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Connection" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All Connection</SelectItem>
               <SelectItem value="online">Online</SelectItem>
               <SelectItem value="offline">Offline</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={accountStatusFilter} onValueChange={setAccountStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40" data-testid="account-status-filter">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -304,7 +316,7 @@ export default function Accounts() {
             {accounts.map((account, index) => (
               <div
                 key={account.account_id}
-                className="account-card animate-fade-in"
+                className={`account-card animate-fade-in ${account.status === 'cancelled' ? 'opacity-60' : ''}`}
                 style={{ animationDelay: `${index * 0.05}s` }}
                 onClick={() => navigate(`/accounts/${account.account_id}`)}
                 data-testid={`account-card-${index}`}
