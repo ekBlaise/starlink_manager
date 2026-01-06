@@ -33,10 +33,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { API } from "@/App";
+import { useAuth, API } from "@/App";
 import { formatDistanceToNow } from "date-fns";
 
-export default function Accounts({ auth }) {
+export default function Accounts() {
+  const auth = useAuth();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);

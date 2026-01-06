@@ -53,10 +53,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { API } from "@/App";
+import { useAuth, API } from "@/App";
 import { format, formatDistanceToNow } from "date-fns";
 
-export default function AccountDetail({ auth }) {
+export default function AccountDetail() {
+  const auth = useAuth();
   const { accountId } = useParams();
   const navigate = useNavigate();
   const [account, setAccount] = useState(null);

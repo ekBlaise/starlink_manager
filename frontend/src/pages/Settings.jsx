@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export default function Settings({ auth }) {
+import { useAuth } from "@/App";
+
+export default function Settings() {
+  const auth = useAuth();
   const getInitials = (name) => {
     if (!name) return "U";
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);

@@ -14,10 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { API } from "@/App";
+import { useAuth, API } from "@/App";
 import { formatDistanceToNow } from "date-fns";
 
-export default function Dashboard({ auth }) {
+export default function Dashboard() {
+  const auth = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
