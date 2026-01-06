@@ -193,7 +193,7 @@ export default function Accounts() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="form-group">
-                    <Label className="form-label">Billing Day</Label>
+                    <Label className="form-label">Billing Day (1-31)</Label>
                     <Select
                       value={String(formData.billing_day)}
                       onValueChange={(value) => setFormData({ ...formData, billing_day: parseInt(value) })}
@@ -202,13 +202,16 @@ export default function Accounts() {
                         <SelectValue placeholder="Select day" />
                       </SelectTrigger>
                       <SelectContent>
-                        {[...Array(28)].map((_, i) => (
+                        {[...Array(31)].map((_, i) => (
                           <SelectItem key={i + 1} value={String(i + 1)}>
                             Day {i + 1}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      For months with fewer days, billing moves to last day
+                    </p>
                   </div>
                   <div className="form-group">
                     <Label className="form-label">Monthly Amount ($)</Label>
