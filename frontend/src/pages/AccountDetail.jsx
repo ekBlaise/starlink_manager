@@ -261,7 +261,7 @@ export default function AccountDetail({ auth }) {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         credentials: "include",
-        body: JSON.stringify({ ...deviceForm, extender_id: deviceForm.extender_id || null }),
+        body: JSON.stringify({ ...deviceForm, extender_id: deviceForm.extender_id === "main_router" ? null : deviceForm.extender_id }),
       });
       if (response.ok) {
         toast.success("Device added");
