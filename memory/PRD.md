@@ -80,9 +80,10 @@ Build a web application to manage multiple Starlink internet accounts with featu
 - [ ] Multi-user collaboration features
 - [ ] Audit logs for account changes
 
-## Tech Stack
-- **Backend**: FastAPI, MongoDB, JWT, bcrypt, Twilio, Gmail SMTP
+## Tech Stack (Updated January 2026)
+- **Backend**: Node.js, Express, PostgreSQL (Neon), JWT, bcryptjs, Twilio, Nodemailer
 - **Frontend**: React, Tailwind CSS, Shadcn/UI
+- **Database**: PostgreSQL hosted on Neon (serverless)
 - **Auth**: JWT + Emergent Google OAuth
 - **Notifications**: Twilio SMS, Gmail SMTP, In-app
 
@@ -97,6 +98,9 @@ Build a web application to manage multiple Starlink internet accounts with featu
 - `/api/reminders/*` - Test email/SMS, check reminders
 - `/api/dashboard/stats` - Dashboard statistics
 
-## Test Results (December 2025)
-- Backend: 100% (33/33 tests passed)
-- Frontend: 95% working
+## Migration History
+- **January 2026**: Migrated backend from FastAPI/MongoDB to Node.js/Express/PostgreSQL (Neon) per user request for Vercel deployment compatibility
+
+## Test Results (January 2026)
+- Backend: 100% (23/23 tests passed)
+- Frontend: 100% working (all major flows tested)
