@@ -198,11 +198,25 @@ export default function AccountDetail() {
       if (response.ok) {
         toast.success("Payment recorded");
         setShowPaymentModal(false);
-        setPaymentForm({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "" });
+        setPaymentForm({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "", is_paid: true });
         fetchBillingRecords();
       }
     } catch (error) {
       toast.error("Failed to add payment");
+    }
+  };
+
+  const togglePaymentStatus = async (billingId, currentStatus) => {
+    try {
+      await fetch(`${API}/accounts/${accountId}/billing/${billingId}?is_paid=${!currentStatus}`, {
+        method: "PUT",
+        credentials: "include",
+        headers,
+      });
+      fetchBillingRecords();
+      toast.success(currentStatus ? "Marked as unpaid" : "Marked as paid");
+    } catch (error) {
+      toast.error("Failed to update payment status");
     }
   };
 
