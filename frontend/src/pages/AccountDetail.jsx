@@ -715,6 +715,14 @@ export default function AccountDetail() {
                         <Label>Notes</Label>
                         <Textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} rows={2} />
                       </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Checkbox 
+                          id="is_paid" 
+                          checked={paymentForm.is_paid} 
+                          onCheckedChange={(checked) => setPaymentForm({ ...paymentForm, is_paid: checked })} 
+                        />
+                        <Label htmlFor="is_paid" className="text-sm cursor-pointer">Payment already made</Label>
+                      </div>
                       <div className="flex justify-end gap-3 pt-4">
                         <Button type="button" variant="ghost" onClick={() => setShowPaymentModal(false)}>Cancel</Button>
                         <Button type="submit" data-testid="submit-payment-btn">Record Payment</Button>
@@ -727,12 +735,26 @@ export default function AccountDetail() {
                 {billingRecords.length > 0 ? (
                   <div className="space-y-3">
                     {billingRecords.map((record, i) => (
-                      <div key={record.billing_id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-sm" data-testid={`billing-item-${i}`}>
-                        <div>
-                          <p className="font-medium">{format(new Date(record.payment_date), 'MMM d, yyyy')}</p>
-                          <p className="text-xs text-muted-foreground">{record.payment_method} {record.notes && `- ${record.notes}`}</p>
+                      <div key={record.billing_id} className={`flex items-center justify-between p-4 rounded-sm border ${record.is_paid !== false ? 'bg-secondary/30 border-border/30' : 'bg-yellow-500/10 border-yellow-500/30'}`} data-testid={`billing-item-${i}`}>
+                        <div className="flex items-center gap-4">
+                          <button 
+                            onClick={() => togglePaymentStatus(record.billing_id, record.is_paid !== false)}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${record.is_paid !== false ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30' : 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30'}`}
+                            title={record.is_paid !== false ? "Mark as unpaid" : "Mark as paid"}
+                          >
+                            {record.is_paid !== false ? <Check className="w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
+                          </button>
+                          <div>
+                            <p className="font-medium">{format(new Date(record.payment_date), 'MMM d, yyyy')}</p>
+                            <p className="text-xs text-muted-foreground">{record.payment_method} {record.notes && `- ${record.notes}`}</p>
+                          </div>
                         </div>
-                        <span className="data-value text-primary text-lg">${record.amount.toFixed(2)}</span>
+                        <div className="flex items-center gap-3">
+                          <Badge className={record.is_paid !== false ? 'badge-online' : 'badge-open'}>
+                            {record.is_paid !== false ? 'Paid' : 'Pending'}
+                          </Badge>
+                          <span className="data-value text-primary text-lg">${record.amount.toFixed(2)}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
