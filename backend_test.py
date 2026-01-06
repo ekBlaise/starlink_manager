@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 class StarlinkAPITester:
-    def __init__(self, base_url="https://skynet-admin.preview.emergentagent.com"):
+    def __init__(self, base_url="https://satellite-hub.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
