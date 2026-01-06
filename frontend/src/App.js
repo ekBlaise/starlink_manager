@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, createContext, useContext } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,27 +15,46 @@ import Layout from "@/components/Layout";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
-// Auth context
+// Auth Context
+const AuthContext = createContext(null);
+
 export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// Auth Provider Component
+const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
   const checkAuth = async () => {
+    const currentToken = localStorage.getItem('token');
+    if (!currentToken) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await fetch(`${API}/auth/me`, {
         credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: { 'Authorization': `Bearer ${currentToken}` }
       });
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        setToken(currentToken);
       } else {
         setUser(null);
         localStorage.removeItem('token');
         setToken(null);
       }
     } catch (error) {
+      console.error('Auth check error:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -51,11 +70,12 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
+    const currentToken = localStorage.getItem('token');
     try {
       await fetch(`${API}/auth/logout`, { 
         method: 'POST', 
         credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
       });
     } catch (e) {}
     setUser(null);
@@ -67,13 +87,20 @@ export const useAuth = () => {
     checkAuth();
   }, []);
 
-  return { user, loading, login, logout, checkAuth, token };
+  const value = { user, loading, login, logout, checkAuth, token };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 // Auth Callback Component for Google OAuth
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const auth = useAuth();
   const hasProcessed = useRef(false);
 
   useEffect(() => {
@@ -93,9 +120,10 @@ const AuthCallback = () => {
           
           if (response.ok) {
             const userData = await response.json();
-            // Clear hash and navigate to dashboard with user data
+            auth.login(userData);
+            // Clear hash and navigate to dashboard
             window.history.replaceState(null, '', window.location.pathname);
-            navigate('/dashboard', { state: { user: userData }, replace: true });
+            navigate('/dashboard', { replace: true });
           } else {
             navigate('/login', { replace: true });
           }
@@ -108,7 +136,7 @@ const AuthCallback = () => {
     };
 
     processSession();
-  }, [navigate]);
+  }, [navigate, auth]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -121,35 +149,11 @@ const AuthCallback = () => {
 };
 
 // Protected Route Component
-const ProtectedRoute = ({ children, auth }) => {
+const ProtectedRoute = ({ children }) => {
+  const auth = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(location.state?.user ? true : null);
-  const [localUser, setLocalUser] = useState(location.state?.user || null);
 
-  useEffect(() => {
-    // If user data passed from AuthCallback, use it and update auth context
-    if (location.state?.user) {
-      auth.login(location.state.user);
-      setIsAuthenticated(true);
-      setLocalUser(location.state.user);
-      // Clear location state
-      window.history.replaceState({}, document.title);
-      return;
-    }
-
-    // Otherwise check auth
-    if (auth.loading) return;
-    
-    if (auth.user) {
-      setIsAuthenticated(true);
-      setLocalUser(auth.user);
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, [auth.loading, auth.user, location.state]);
-
-  if (isAuthenticated === null || auth.loading) {
+  if (auth.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -160,16 +164,17 @@ const ProtectedRoute = ({ children, auth }) => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!auth.user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children;
+  return <Layout>{children}</Layout>;
 };
 
 // App Router Component
-const AppRouter = ({ auth }) => {
+const AppRouter = () => {
   const location = useLocation();
+  const auth = useAuth();
 
   // Check for session_id in URL hash - process OAuth callback
   if (location.hash?.includes('session_id=')) {
@@ -179,37 +184,29 @@ const AppRouter = ({ auth }) => {
   return (
     <Routes>
       <Route path="/login" element={
-        auth.user ? <Navigate to="/dashboard" replace /> : <Login auth={auth} />
+        auth.user ? <Navigate to="/dashboard" replace /> : <Login />
       } />
       <Route path="/register" element={
-        auth.user ? <Navigate to="/dashboard" replace /> : <Register auth={auth} />
+        auth.user ? <Navigate to="/dashboard" replace /> : <Register />
       } />
       <Route path="/dashboard" element={
-        <ProtectedRoute auth={auth}>
-          <Layout auth={auth}>
-            <Dashboard auth={auth} />
-          </Layout>
+        <ProtectedRoute>
+          <Dashboard />
         </ProtectedRoute>
       } />
       <Route path="/accounts" element={
-        <ProtectedRoute auth={auth}>
-          <Layout auth={auth}>
-            <Accounts auth={auth} />
-          </Layout>
+        <ProtectedRoute>
+          <Accounts />
         </ProtectedRoute>
       } />
       <Route path="/accounts/:accountId" element={
-        <ProtectedRoute auth={auth}>
-          <Layout auth={auth}>
-            <AccountDetail auth={auth} />
-          </Layout>
+        <ProtectedRoute>
+          <AccountDetail />
         </ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute auth={auth}>
-          <Layout auth={auth}>
-            <Settings auth={auth} />
-          </Layout>
+        <ProtectedRoute>
+          <Settings />
         </ProtectedRoute>
       } />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -219,14 +216,14 @@ const AppRouter = ({ auth }) => {
 };
 
 function App() {
-  const auth = useAuth();
-
   return (
     <div className="App">
       <div className="noise-overlay" aria-hidden="true"></div>
       <Toaster position="top-right" richColors />
       <BrowserRouter>
-        <AppRouter auth={auth} />
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
       </BrowserRouter>
     </div>
   );
