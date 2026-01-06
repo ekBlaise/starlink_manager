@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/App";
 import { 
   LayoutDashboard, 
   Satellite, 
@@ -18,8 +19,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export const Layout = ({ children, auth }) => {
+export const Layout = ({ children }) => {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
