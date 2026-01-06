@@ -107,6 +107,23 @@ class StarlinkAPITester:
             self.log_test("User Login", False, f"Response: {response}")
             return False
 
+    def test_existing_user_login(self):
+        """Test login with the specific test credentials from review request"""
+        login_data = {
+            "email": "test@example.com",
+            "password": "Test123!"
+        }
+        
+        success, response = self.make_request('POST', 'auth/login', login_data, 200)
+        if success and 'token' in response:
+            self.token = response['token']  # Update token for subsequent tests
+            self.user_data = response['user']
+            self.log_test("Existing User Login (test@example.com)", True)
+            return True
+        else:
+            self.log_test("Existing User Login (test@example.com)", False, f"Response: {response}")
+            return False
+
     def test_auth_me(self):
         """Test getting current user info"""
         success, response = self.make_request('GET', 'auth/me', None, 200)
