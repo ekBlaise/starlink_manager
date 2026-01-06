@@ -11,7 +11,9 @@ import {
   WifiOff,
   Smartphone,
   ChevronRight,
-  X
+  X,
+  Ban,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,7 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [accountStatusFilter, setAccountStatusFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     account_name: "",
@@ -57,13 +60,14 @@ export default function Accounts() {
 
   useEffect(() => {
     fetchAccounts();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, accountStatusFilter]);
 
   const fetchAccounts = async () => {
     try {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (statusFilter !== "all") params.append("status", statusFilter);
+      if (accountStatusFilter !== "all") params.append("account_status", accountStatusFilter);
 
       const response = await fetch(`${API}/accounts?${params}`, {
         credentials: "include",
