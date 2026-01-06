@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Satellite, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Satellite, Mail, Lock, User, Eye, EyeOff, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth, API } from "@/App";
+import PasswordStrength from "@/components/PasswordStrength";
 
 export default function Register() {
   const auth = useAuth();
@@ -14,6 +15,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +38,12 @@ export default function Register() {
       const response = await fetch(`${API}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ 
+          name, 
+          email, 
+          password,
+          phone_number: phoneNumber || null
+        }),
         credentials: "include",
       });
 
@@ -142,6 +149,23 @@ export default function Register() {
           </div>
 
           <div className="form-group">
+            <Label htmlFor="phone" className="form-label">Phone Number (for SMS alerts)</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+1234567890"
+                className="pl-10"
+                data-testid="phone-input"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Optional - for payment reminder SMS</p>
+          </div>
+
+          <div className="form-group">
             <Label htmlFor="password" className="form-label">Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -163,6 +187,7 @@ export default function Register() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <PasswordStrength password={password} />
           </div>
 
           <div className="form-group">
@@ -180,6 +205,9 @@ export default function Register() {
                 data-testid="confirm-password-input"
               />
             </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+            )}
           </div>
 
           <Button
