@@ -1,0 +1,127 @@
+{
+  "identity": {
+    "name": "Starlink Manager",
+    "aesthetic": "Space Tech Control Room",
+    "description": "A high-density, professional dashboard for managing multiple Starlink accounts. The design prioritizes data clarity, status visibility, and a sleek, dark-mode 'command center' feel.",
+    "emotional_tone": "Reliable, Technical, Futuristic, Precise"
+  },
+  "typography": {
+    "primary_font": "Inter",
+    "heading_font": "Chivo",
+    "mono_font": "JetBrains Mono",
+    "scale": {
+      "h1": "text-4xl font-bold tracking-tight",
+      "h2": "text-3xl font-semibold tracking-tight",
+      "h3": "text-2xl font-medium",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground",
+      "mono": "font-mono text-xs tracking-wide"
+    },
+    "import_url": "https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+  },
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "background": "#050505",
+      "foreground": "#FFFFFF",
+      "card": "#0F1115",
+      "card_foreground": "#F3F4F6",
+      "popover": "#0F1115",
+      "popover_foreground": "#FFFFFF",
+      "primary": "#00A3FF",
+      "primary_foreground": "#000000",
+      "secondary": "#1F2937",
+      "secondary_foreground": "#FFFFFF",
+      "muted": "#1F2937",
+      "muted_foreground": "#9CA3AF",
+      "accent": "#00A3FF",
+      "accent_foreground": "#FFFFFF",
+      "destructive": "#FF3333",
+      "destructive_foreground": "#FFFFFF",
+      "border": "#27272A",
+      "input": "#27272A",
+      "ring": "#00A3FF"
+    },
+    "status": {
+      "online": "#00E676",
+      "offline": "#FF3333",
+      "warning": "#FFB020",
+      "neutral": "#9CA3AF"
+    }
+  },
+  "layout": {
+    "grid_system": "Control Room Grid (Mode B)",
+    "container_padding": "p-6 md:p-8",
+    "gap": "gap-4 md:gap-6",
+    "radius": "rounded-sm",
+    "sidebar_width": "w-64"
+  },
+  "components": {
+    "buttons": {
+      "default": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm font-medium transition-all",
+      "outline": "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground rounded-sm",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-sm"
+    },
+    "cards": {
+      "style": "bg-card border border-border/40 rounded-sm shadow-none",
+      "hover": "hover:border-primary/50 transition-colors duration-300"
+    },
+    "inputs": {
+      "style": "bg-input/50 border-transparent focus:border-primary focus:ring-1 focus:ring-primary rounded-sm"
+    },
+    "badges": {
+      "style": "rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-background/80 border-b border-white/5",
+    "gradients": {
+      "subtle_glow": "bg-gradient-to-tr from-primary/10 via-transparent to-transparent",
+      "hero_overlay": "bg-gradient-to-b from-transparent to-background"
+    },
+    "textures": "bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none fixed inset-0 z-50",
+    "shadows": {
+      "glow": "shadow-[0_0_15px_rgba(0,163,255,0.3)]"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.pexels.com/photos/35501071/pexels-photo-35501071.jpeg",
+      "server_room": "https://images.pexels.com/photos/3693050/pexels-photo-3693050.jpeg",
+      "network_abstract": "https://images.pexels.com/photos/17485657/pexels-photo-17485657.png"
+    },
+    "icons": "lucide-react"
+  },
+  "instructions_to_main_agent": [
+    "Implement a strict Dark Mode first approach. The app should feel like a satellite control center.",
+    "Use 'Chivo' font for all Headings (h1-h3) to give a technical feel.",
+    "Use 'JetBrains Mono' for all data points: IP addresses, Device IDs, Latency metrics, and Billing amounts.",
+    "Ensure high contrast for text. Avoid dark grey on black. Use light grey (gray-300/400) for secondary text.",
+    "Use the 'Control Room' grid layout: dense, information-rich, with minimal wasted space.",
+    "Status indicators (Online/Offline) must be vibrant and immediately visible (glowing dots).",
+    "Forms should be clean, with inputs having a subtle background (zinc-900) and clear focus states.",
+    "Do not use rounded-xl or rounded-2xl. Stick to rounded-sm or rounded-md for a precise, engineered look.",
+    "Add a subtle noise texture overlay to the entire app to prevent color banding and add a 'film' quality.",
+    "Use the provided image URLs for backgrounds or dashboard widgets where appropriate."
+  ],
+  "universal_guidelines": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+  ]
+}
