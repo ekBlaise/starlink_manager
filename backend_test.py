@@ -431,6 +431,26 @@ class StarlinkAPITester:
             self.log_test("Delete Account", False, f"Response: {response}")
             return False
 
+    def test_get_notifications(self):
+        """Test getting notifications list"""
+        success, response = self.make_request('GET', 'notifications', None, 200)
+        if success and isinstance(response, list):
+            self.log_test("Get Notifications", True)
+            return True
+        else:
+            self.log_test("Get Notifications", False, f"Response: {response}")
+            return False
+
+    def test_get_notifications_count(self):
+        """Test getting unread notifications count"""
+        success, response = self.make_request('GET', 'notifications/count', None, 200)
+        if success and 'unread_count' in response:
+            self.log_test("Get Notifications Count", True)
+            return True
+        else:
+            self.log_test("Get Notifications Count", False, f"Response: {response}")
+            return False
+
     def run_all_tests(self):
         """Run all API tests in sequence"""
         print("🚀 Starting Starlink Manager API Tests")
