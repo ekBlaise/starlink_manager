@@ -454,6 +454,7 @@ class StarlinkAPITester:
                 return self.get_summary()
             
         self.test_auth_me()
+        self.test_update_user_profile()
         
         # Dashboard Tests
         print("\n📊 Dashboard Tests")
