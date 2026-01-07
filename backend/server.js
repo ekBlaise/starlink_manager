@@ -21,6 +21,10 @@ const sql = neon(process.env.DATABASE_URL);
 const JWT_SECRET = process.env.JWT_SECRET || 'starlink-manager-secret-key';
 const JWT_EXPIRATION = '7d';
 
+// Google OAuth Config
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1076605813360-tkleimc080a64nhu4ab4f4rk9ifj6qps.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
+
 // Twilio Config
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
   ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
