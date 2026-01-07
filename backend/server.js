@@ -167,6 +167,17 @@ async function initDatabase() {
       )
     `;
     
+    await sql`
+      CREATE TABLE IF NOT EXISTS gmail_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(50) UNIQUE NOT NULL,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
