@@ -576,21 +576,6 @@ app.delete('/api/accounts/:accountId', authenticateToken, async (req, res) => {
     res.status(500).json({ detail: 'Failed to delete account' });
   }
 });
-      return res.status(403).json({ detail: 'Admin access required' });
-    }
-    
-    const result = await sql`DELETE FROM starlink_accounts WHERE account_id = ${req.params.accountId}`;
-    await sql`DELETE FROM billing_records WHERE account_id = ${req.params.accountId}`;
-    await sql`DELETE FROM support_tickets WHERE account_id = ${req.params.accountId}`;
-    await sql`DELETE FROM extenders WHERE account_id = ${req.params.accountId}`;
-    await sql`DELETE FROM devices WHERE account_id = ${req.params.accountId}`;
-    
-    res.json({ message: 'Account deleted' });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    res.status(500).json({ detail: 'Failed to delete account' });
-  }
-});
 
 // ==================== BILLING ROUTES ====================
 app.post('/api/accounts/:accountId/billing', authenticateToken, async (req, res) => {
