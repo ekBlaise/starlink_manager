@@ -465,17 +465,6 @@ app.post('/api/auth/google/callback', async (req, res) => {
     
     // Store Gmail tokens if available (for email sync)
     if (tokens.refresh_token) {
-      await sql`
-        CREATE TABLE IF NOT EXISTS gmail_tokens (
-          id SERIAL PRIMARY KEY,
-          user_id VARCHAR(50) UNIQUE NOT NULL,
-          access_token TEXT NOT NULL,
-          refresh_token TEXT,
-          expires_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-      
       const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
       await sql`
         INSERT INTO gmail_tokens (user_id, access_token, refresh_token, expires_at)
