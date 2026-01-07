@@ -507,6 +507,12 @@ app.put('/api/accounts/:accountId', authenticateToken, async (req, res) => {
       return res.status(403).json({ detail: 'Admin access required' });
     }
     
+    // Verify ownership
+    const existing = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (existing.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
     const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status } = req.body;
     
     if (billing_day !== undefined && (billing_day < 1 || billing_day > 31)) {
@@ -525,20 +531,20 @@ app.put('/api/accounts/:accountId', authenticateToken, async (req, res) => {
     if (is_online !== undefined) updates.push(sql`is_online = ${is_online}`);
     if (status !== undefined) updates.push(sql`status = ${status}`);
     
-    await sql`UPDATE starlink_accounts SET last_checked = CURRENT_TIMESTAMP WHERE account_id = ${req.params.accountId}`;
+    await sql`UPDATE starlink_accounts SET last_checked = CURRENT_TIMESTAMP WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     
     // Apply individual updates
-    if (account_name !== undefined) await sql`UPDATE starlink_accounts SET account_name = ${account_name} WHERE account_id = ${req.params.accountId}`;
-    if (location !== undefined) await sql`UPDATE starlink_accounts SET location = ${location} WHERE account_id = ${req.params.accountId}`;
-    if (account_email !== undefined) await sql`UPDATE starlink_accounts SET account_email = ${account_email} WHERE account_id = ${req.params.accountId}`;
-    if (kit_number !== undefined) await sql`UPDATE starlink_accounts SET kit_number = ${kit_number} WHERE account_id = ${req.params.accountId}`;
-    if (notes !== undefined) await sql`UPDATE starlink_accounts SET notes = ${notes} WHERE account_id = ${req.params.accountId}`;
-    if (billing_day !== undefined) await sql`UPDATE starlink_accounts SET billing_day = ${billing_day} WHERE account_id = ${req.params.accountId}`;
-    if (monthly_amount !== undefined) await sql`UPDATE starlink_accounts SET monthly_amount = ${monthly_amount} WHERE account_id = ${req.params.accountId}`;
-    if (is_online !== undefined) await sql`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${req.params.accountId}`;
-    if (status !== undefined) await sql`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${req.params.accountId}`;
+    if (account_name !== undefined) await sql`UPDATE starlink_accounts SET account_name = ${account_name} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (location !== undefined) await sql`UPDATE starlink_accounts SET location = ${location} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (account_email !== undefined) await sql`UPDATE starlink_accounts SET account_email = ${account_email} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (kit_number !== undefined) await sql`UPDATE starlink_accounts SET kit_number = ${kit_number} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (notes !== undefined) await sql`UPDATE starlink_accounts SET notes = ${notes} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (billing_day !== undefined) await sql`UPDATE starlink_accounts SET billing_day = ${billing_day} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (monthly_amount !== undefined) await sql`UPDATE starlink_accounts SET monthly_amount = ${monthly_amount} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (is_online !== undefined) await sql`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (status !== undefined) await sql`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     
-    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId}`;
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     res.json(accounts[0]);
   } catch (error) {
     console.error('Update account error:', error);
@@ -549,6 +555,27 @@ app.put('/api/accounts/:accountId', authenticateToken, async (req, res) => {
 app.delete('/api/accounts/:accountId', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
+      return res.status(403).json({ detail: 'Admin access required' });
+    }
+    
+    // Verify ownership
+    const existing = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (existing.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    await sql`DELETE FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    await sql`DELETE FROM billing_records WHERE account_id = ${req.params.accountId}`;
+    await sql`DELETE FROM support_tickets WHERE account_id = ${req.params.accountId}`;
+    await sql`DELETE FROM extenders WHERE account_id = ${req.params.accountId}`;
+    await sql`DELETE FROM devices WHERE account_id = ${req.params.accountId}`;
+    
+    res.json({ message: 'Account deleted' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ detail: 'Failed to delete account' });
+  }
+});
       return res.status(403).json({ detail: 'Admin access required' });
     }
     
