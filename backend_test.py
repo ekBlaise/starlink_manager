@@ -661,6 +661,20 @@ class StarlinkAPITester:
         self.test_get_notifications()
         self.test_get_notifications_count()
         
+        # Google OAuth & Gmail Sync Tests
+        print("\n📧 Google OAuth & Gmail Sync Tests")
+        self.test_google_oauth_callback_missing_code()
+        self.test_google_oauth_callback_invalid_code()
+        self.test_google_oauth_callback_valid_format()
+        self.test_gmail_status_unauthenticated()
+        self.test_gmail_status_authenticated()
+        self.test_gmail_disconnect_unauthenticated()
+        self.test_gmail_disconnect_authenticated()
+        self.test_gmail_sync_unauthenticated()
+        self.test_gmail_sync_not_connected()
+        self.test_gmail_emails_unauthenticated()
+        self.test_gmail_emails_authenticated()
+        
         return self.get_summary()
 
     def get_summary(self):
