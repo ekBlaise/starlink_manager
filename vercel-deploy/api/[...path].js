@@ -21,6 +21,10 @@ function getDb() {
 const JWT_SECRET = process.env.JWT_SECRET || 'starlink-manager-secret-key';
 const JWT_EXPIRATION = '7d';
 
+// Google OAuth Config
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
 // Lazy Twilio initialization
 let twilioClient = null;
 function getTwilio() {
@@ -58,6 +62,7 @@ async function initDatabase() {
     await db`CREATE TABLE IF NOT EXISTS extenders (id SERIAL PRIMARY KEY, extender_id VARCHAR(50) UNIQUE NOT NULL, account_id VARCHAR(50) NOT NULL, name VARCHAR(255) NOT NULL, ip_address VARCHAR(50) DEFAULT '', location VARCHAR(255) DEFAULT '', is_online BOOLEAN DEFAULT true, devices_connected INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
     await db`CREATE TABLE IF NOT EXISTS devices (id SERIAL PRIMARY KEY, device_id VARCHAR(50) UNIQUE NOT NULL, account_id VARCHAR(50) NOT NULL, extender_id VARCHAR(50), name VARCHAR(255) NOT NULL, mac_address VARCHAR(50) NOT NULL, device_type VARCHAR(50) DEFAULT 'unknown', is_whitelisted BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
     await db`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, notification_id VARCHAR(50) UNIQUE NOT NULL, user_id VARCHAR(50) NOT NULL, account_id VARCHAR(50), title VARCHAR(255) NOT NULL, message TEXT NOT NULL, notification_type VARCHAR(50) DEFAULT 'system', is_read BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
+    await db`CREATE TABLE IF NOT EXISTS gmail_tokens (id SERIAL PRIMARY KEY, user_id VARCHAR(50) UNIQUE NOT NULL, access_token TEXT NOT NULL, refresh_token TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
   } catch (error) {
     console.error('Database init error:', error);
     throw error;
@@ -108,6 +113,39 @@ const sendSMS = async (to, message) => {
     return false; 
   }
 };
+
+// Gmail token refresh helper
+async function refreshGmailToken(userId) {
+  const db = getDb();
+  const tokens = await db`SELECT * FROM gmail_tokens WHERE user_id = ${userId}`;
+  if (tokens.length === 0 || !tokens[0].refresh_token) {
+    return null;
+  }
+  
+  const token = tokens[0];
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: token.refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+  
+  const data = await response.json();
+  
+  if (data.error) {
+    console.error('Token refresh error:', data);
+    return null;
+  }
+  
+  const expiresAt = new Date(Date.now() + (data.expires_in * 1000));
+  await db`UPDATE gmail_tokens SET access_token = ${data.access_token}, expires_at = ${expiresAt} WHERE user_id = ${userId}`;
+  
+  return data.access_token;
+}
 
 // CORS headers
 function setCorsHeaders(res) {
@@ -179,6 +217,190 @@ module.exports = async function handler(req, res) {
         const users = await db`SELECT user_id, email, name, picture, phone_number, role, created_at FROM users WHERE user_id = ${user.user_id}`;
         return res.json(users[0]);
       }
+    }
+
+    // GOOGLE OAUTH CALLBACK
+    if (route === 'auth/google/callback' && method === 'POST') {
+      const { code, redirect_uri } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ detail: 'Authorization code required' });
+      }
+      
+      // Exchange code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: redirect_uri,
+          grant_type: 'authorization_code',
+        }),
+      });
+      
+      const tokens = await tokenResponse.json();
+      
+      if (tokens.error) {
+        console.error('Google token error:', tokens);
+        return res.status(400).json({ detail: tokens.error_description || 'Failed to exchange code' });
+      }
+      
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      
+      const googleUser = await userInfoResponse.json();
+      
+      if (!googleUser.email) {
+        return res.status(400).json({ detail: 'Failed to get user info from Google' });
+      }
+      
+      // Check if user exists
+      let users = await db`SELECT * FROM users WHERE email = ${googleUser.email}`;
+      let userId;
+      
+      if (users.length === 0) {
+        // Create new user
+        userId = `user_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+        await db`INSERT INTO users (user_id, email, name, picture, role) VALUES (${userId}, ${googleUser.email}, ${googleUser.name}, ${googleUser.picture || null}, 'admin')`;
+      } else {
+        // Update existing user
+        userId = users[0].user_id;
+        await db`UPDATE users SET name = ${googleUser.name}, picture = ${googleUser.picture || null} WHERE user_id = ${userId}`;
+      }
+      
+      // Store Gmail tokens if available (for email sync)
+      if (tokens.refresh_token) {
+        const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+        await db`INSERT INTO gmail_tokens (user_id, access_token, refresh_token, expires_at) VALUES (${userId}, ${tokens.access_token}, ${tokens.refresh_token}, ${expiresAt}) ON CONFLICT (user_id) DO UPDATE SET access_token = ${tokens.access_token}, refresh_token = COALESCE(${tokens.refresh_token}, gmail_tokens.refresh_token), expires_at = ${expiresAt}`;
+      }
+      
+      // Create JWT token
+      const token = createJwtToken(userId);
+      
+      // Get user data
+      const userResult = await db`SELECT user_id, email, name, picture, phone_number, role, created_at FROM users WHERE user_id = ${userId}`;
+      
+      return res.json({ token, user: userResult[0] });
+    }
+
+    // GMAIL ROUTES
+    if (route === 'gmail/status' && method === 'GET') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      
+      const tokens = await db`SELECT * FROM gmail_tokens WHERE user_id = ${user.user_id}`;
+      
+      if (tokens.length === 0) {
+        return res.json({ connected: false });
+      }
+      
+      const token = tokens[0];
+      const isExpired = new Date(token.expires_at) < new Date();
+      
+      return res.json({ connected: true, hasRefreshToken: !!token.refresh_token, isExpired });
+    }
+
+    if (route === 'gmail/disconnect' && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      
+      await db`DELETE FROM gmail_tokens WHERE user_id = ${user.user_id}`;
+      return res.json({ message: 'Gmail disconnected' });
+    }
+
+    if (route === 'gmail/sync' && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      
+      const tokens = await db`SELECT * FROM gmail_tokens WHERE user_id = ${user.user_id}`;
+      
+      if (tokens.length === 0) {
+        return res.status(400).json({ detail: 'Gmail not connected. Please sign in with Google first.' });
+      }
+      
+      let accessToken = tokens[0].access_token;
+      
+      // Check if token is expired and refresh
+      if (new Date(tokens[0].expires_at) < new Date()) {
+        accessToken = await refreshGmailToken(user.user_id);
+        if (!accessToken) {
+          return res.status(400).json({ detail: 'Gmail token expired. Please reconnect Gmail.' });
+        }
+      }
+      
+      // Get user's Starlink account emails to match against
+      const accounts = await db`SELECT account_id, account_name, account_email FROM starlink_accounts WHERE user_id = ${user.user_id}`;
+      
+      // Search for emails from Starlink
+      const searchQuery = encodeURIComponent('from:starlink.com OR from:spacex.com');
+      const messagesResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=20`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      
+      const messagesData = await messagesResponse.json();
+      
+      if (messagesData.error) {
+        console.error('Gmail API error:', messagesData.error);
+        return res.status(400).json({ detail: 'Failed to fetch emails from Gmail' });
+      }
+      
+      if (!messagesData.messages || messagesData.messages.length === 0) {
+        return res.json({ synced: 0, message: 'No Starlink emails found' });
+      }
+      
+      let syncedCount = 0;
+      
+      // Process each message (up to 10)
+      for (const msg of messagesData.messages.slice(0, 10)) {
+        const msgResponse = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        
+        const msgData = await msgResponse.json();
+        if (msgData.error) continue;
+        
+        const headers = msgData.payload?.headers || [];
+        const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
+        const from = headers.find(h => h.name === 'From')?.value || '';
+        const to = headers.find(h => h.name === 'To')?.value || '';
+        const date = headers.find(h => h.name === 'Date')?.value || '';
+        
+        // Check if notification already exists
+        const existing = await db`SELECT * FROM notifications WHERE notification_id LIKE ${'gmail_' + msg.id + '%'}`;
+        if (existing.length > 0) continue;
+        
+        // Try to match with a Starlink account
+        let matchedAccount = null;
+        for (const account of accounts) {
+          if (to.toLowerCase().includes(account.account_email.toLowerCase())) {
+            matchedAccount = account;
+            break;
+          }
+        }
+        
+        // Create notification
+        const notificationId = `gmail_${msg.id}_${Date.now()}`;
+        const createdAt = new Date(date) || new Date();
+        await db`INSERT INTO notifications (notification_id, user_id, account_id, title, message, notification_type, created_at) VALUES (${notificationId}, ${user.user_id}, ${matchedAccount?.account_id || null}, ${`Starlink Email: ${subject.substring(0, 100)}`}, ${`From: ${from}\nDate: ${date}\n\n${matchedAccount ? `Linked to: ${matchedAccount.account_name}` : 'No account match found'}`}, 'email_sync', ${createdAt})`;
+        
+        syncedCount++;
+      }
+      
+      return res.json({ synced: syncedCount, message: `Synced ${syncedCount} new Starlink emails` });
+    }
+
+    if (route === 'gmail/emails' && method === 'GET') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      
+      const emails = await db`SELECT * FROM notifications WHERE user_id = ${user.user_id} AND notification_type = 'email_sync' ORDER BY created_at DESC LIMIT 50`;
+      return res.json(emails);
     }
 
     // ACCOUNTS ROUTES
