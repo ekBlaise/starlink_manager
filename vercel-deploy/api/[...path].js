@@ -332,13 +332,17 @@ module.exports = async function handler(req, res) {
         }
       }
       
-      // Get user's Starlink account emails to match against
-      const accounts = await db`SELECT account_id, account_name, account_email FROM starlink_accounts WHERE user_id = ${user.user_id}`;
+      // Get user's Starlink accounts with their email addresses
+      const accounts = await db`SELECT account_id, account_name, account_email, kit_number FROM starlink_accounts WHERE user_id = ${user.user_id}`;
+      
+      if (accounts.length === 0) {
+        return res.json({ synced: 0, message: 'No Starlink accounts found. Add accounts first to link emails.' });
+      }
       
       // Search for emails from Starlink
       const searchQuery = encodeURIComponent('from:starlink.com OR from:spacex.com');
       const messagesResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=20`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=50`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       
@@ -354,11 +358,13 @@ module.exports = async function handler(req, res) {
       }
       
       let syncedCount = 0;
+      let linkedCount = 0;
+      let unmatchedCount = 0;
       
-      // Process each message (up to 10)
-      for (const msg of messagesData.messages.slice(0, 10)) {
+      // Process each message (up to 30)
+      for (const msg of messagesData.messages.slice(0, 30)) {
         const msgResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Delivered-To&metadataHeaders=X-Original-To`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         
@@ -369,30 +375,45 @@ module.exports = async function handler(req, res) {
         const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
         const from = headers.find(h => h.name === 'From')?.value || '';
         const to = headers.find(h => h.name === 'To')?.value || '';
+        const cc = headers.find(h => h.name === 'Cc')?.value || '';
+        const deliveredTo = headers.find(h => h.name === 'Delivered-To')?.value || '';
+        const originalTo = headers.find(h => h.name === 'X-Original-To')?.value || '';
         const date = headers.find(h => h.name === 'Date')?.value || '';
         
         // Check if notification already exists
         const existing = await db`SELECT * FROM notifications WHERE notification_id LIKE ${'gmail_' + msg.id + '%'}`;
         if (existing.length > 0) continue;
         
-        // Try to match with a Starlink account
+        // Combine all recipient fields to search for account email matches
+        const allRecipients = `${to} ${cc} ${deliveredTo} ${originalTo}`.toLowerCase();
+        
+        // Find which Starlink account this email belongs to
         let matchedAccount = null;
         for (const account of accounts) {
-          if (to.toLowerCase().includes(account.account_email.toLowerCase())) {
+          const accountEmail = account.account_email.toLowerCase();
+          if (allRecipients.includes(accountEmail)) {
+            matchedAccount = account;
+            break;
+          }
+          if (account.kit_number && subject.toLowerCase().includes(account.kit_number.toLowerCase())) {
             matchedAccount = account;
             break;
           }
         }
         
-        // Create notification
+        // Create notification linked to the matched Starlink account
         const notificationId = `gmail_${msg.id}_${Date.now()}`;
-        const createdAt = new Date(date) || new Date();
-        await db`INSERT INTO notifications (notification_id, user_id, account_id, title, message, notification_type, created_at) VALUES (${notificationId}, ${user.user_id}, ${matchedAccount?.account_id || null}, ${`Starlink Email: ${subject.substring(0, 100)}`}, ${`From: ${from}\nDate: ${date}\n\n${matchedAccount ? `Linked to: ${matchedAccount.account_name}` : 'No account match found'}`}, 'email_sync', ${createdAt})`;
+        const emailDate = new Date(date);
+        const validDate = isNaN(emailDate.getTime()) ? new Date() : emailDate;
+        
+        await db`INSERT INTO notifications (notification_id, user_id, account_id, title, message, notification_type, created_at) VALUES (${notificationId}, ${user.user_id}, ${matchedAccount?.account_id || null}, ${`Starlink: ${subject.substring(0, 150)}`}, ${`From: ${from}\nTo: ${to}\nDate: ${date}\n\n${matchedAccount ? `✓ Linked to account: ${matchedAccount.account_name} (${matchedAccount.account_email})` : '⚠ Could not match to any Starlink account'}`}, 'email_sync', ${validDate})`;
         
         syncedCount++;
+        if (matchedAccount) linkedCount++;
+        else unmatchedCount++;
       }
       
-      return res.json({ synced: syncedCount, message: `Synced ${syncedCount} new Starlink emails` });
+      return res.json({ synced: syncedCount, linked: linkedCount, unmatched: unmatchedCount, message: `Synced ${syncedCount} emails: ${linkedCount} linked to accounts, ${unmatchedCount} unmatched` });
     }
 
     if (route === 'gmail/emails' && method === 'GET') {
