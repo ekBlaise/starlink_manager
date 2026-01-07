@@ -1,5 +1,96 @@
 ---
 
+backend:
+  - task: "Google OAuth Callback"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - verify POST /api/auth/google/callback endpoint accepts code and redirect_uri, handles missing code error, handles invalid code error"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Google OAuth callback endpoint working correctly: Accepts POST requests with code and redirect_uri parameters, returns proper 400 error for missing code ('Authorization code required'), handles invalid codes with appropriate error response, endpoint structure and authentication flow implemented correctly"
+
+  - task: "Gmail Status Check"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - verify GET /api/gmail/status requires authentication, returns connected status"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Gmail status endpoint working correctly: Requires Bearer token authentication (returns 401 without auth), returns proper JSON response with connected: false for users without Gmail connected, endpoint accessible and functional"
+
+  - task: "Gmail Disconnect"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - verify POST /api/gmail/disconnect requires authentication, disconnects Gmail successfully"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Gmail disconnect endpoint working correctly: Requires Bearer token authentication (returns 401 without auth), successfully disconnects Gmail and returns success message, endpoint functional and secure"
+
+  - task: "Gmail Sync"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - verify POST /api/gmail/sync requires authentication, returns proper error when Gmail not connected"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Gmail sync endpoint working correctly: Requires Bearer token authentication (returns 401 without auth), returns proper 400 error with message 'Gmail not connected. Please sign in with Google first.' when Gmail not connected, endpoint logic implemented correctly"
+
+  - task: "Gmail Emails List"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - verify GET /api/gmail/emails requires authentication, returns list of synced emails"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Gmail emails endpoint working correctly: Requires Bearer token authentication (returns 401 without auth), returns proper JSON array of synced email notifications, endpoint accessible and returns expected data structure"
+
+  - task: "Gmail Tokens Database Table"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL BUG FOUND - gmail_tokens table was missing from database initialization, causing all Gmail endpoints to fail with 'relation gmail_tokens does not exist' error"
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Added gmail_tokens table creation to initDatabase() function in server.js. Table now properly created on startup with correct schema (user_id, access_token, refresh_token, expires_at, created_at). All Gmail endpoints now functional"
+
 frontend:
   - task: "Login Page Rebranding"
     implemented: true
