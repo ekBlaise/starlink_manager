@@ -189,8 +189,8 @@ module.exports = async function handler(req, res) {
       if (method === 'GET') {
         const { search, status, account_status } = req.query;
         let accounts = search 
-          ? await db`SELECT * FROM starlink_accounts WHERE (account_name ILIKE ${'%'+search+'%'} OR location ILIKE ${'%'+search+'%'} OR account_email ILIKE ${'%'+search+'%'}) ORDER BY created_at DESC`
-          : await db`SELECT * FROM starlink_accounts ORDER BY created_at DESC`;
+          ? await db`SELECT * FROM starlink_accounts WHERE user_id = ${user.user_id} AND (account_name ILIKE ${'%'+search+'%'} OR location ILIKE ${'%'+search+'%'} OR account_email ILIKE ${'%'+search+'%'}) ORDER BY created_at DESC`
+          : await db`SELECT * FROM starlink_accounts WHERE user_id = ${user.user_id} ORDER BY created_at DESC`;
         if (status === 'online') accounts = accounts.filter(a => a.is_online === true);
         else if (status === 'offline') accounts = accounts.filter(a => a.is_online === false);
         if (account_status && account_status !== 'all') accounts = accounts.filter(a => a.status === account_status);
@@ -216,30 +216,34 @@ module.exports = async function handler(req, res) {
       const accountId = accountMatch[1];
       
       if (method === 'GET') {
-        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId}`;
+        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
         return res.json(accounts[0]);
       }
       
       if (method === 'PUT') {
         if (user.role !== 'admin') return res.status(403).json({ detail: 'Admin access required' });
+        const existing = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (existing.length === 0) return res.status(404).json({ detail: 'Account not found' });
         const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status } = req.body;
-        if (account_name !== undefined) await db`UPDATE starlink_accounts SET account_name = ${account_name} WHERE account_id = ${accountId}`;
-        if (location !== undefined) await db`UPDATE starlink_accounts SET location = ${location} WHERE account_id = ${accountId}`;
-        if (account_email !== undefined) await db`UPDATE starlink_accounts SET account_email = ${account_email} WHERE account_id = ${accountId}`;
-        if (kit_number !== undefined) await db`UPDATE starlink_accounts SET kit_number = ${kit_number} WHERE account_id = ${accountId}`;
-        if (notes !== undefined) await db`UPDATE starlink_accounts SET notes = ${notes} WHERE account_id = ${accountId}`;
-        if (billing_day !== undefined) await db`UPDATE starlink_accounts SET billing_day = ${billing_day} WHERE account_id = ${accountId}`;
-        if (monthly_amount !== undefined) await db`UPDATE starlink_accounts SET monthly_amount = ${monthly_amount} WHERE account_id = ${accountId}`;
-        if (is_online !== undefined) await db`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${accountId}`;
-        if (status !== undefined) await db`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${accountId}`;
-        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId}`;
+        if (account_name !== undefined) await db`UPDATE starlink_accounts SET account_name = ${account_name} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (location !== undefined) await db`UPDATE starlink_accounts SET location = ${location} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (account_email !== undefined) await db`UPDATE starlink_accounts SET account_email = ${account_email} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (kit_number !== undefined) await db`UPDATE starlink_accounts SET kit_number = ${kit_number} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (notes !== undefined) await db`UPDATE starlink_accounts SET notes = ${notes} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (billing_day !== undefined) await db`UPDATE starlink_accounts SET billing_day = ${billing_day} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (monthly_amount !== undefined) await db`UPDATE starlink_accounts SET monthly_amount = ${monthly_amount} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (is_online !== undefined) await db`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (status !== undefined) await db`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         return res.json(accounts[0]);
       }
       
       if (method === 'DELETE') {
         if (user.role !== 'admin') return res.status(403).json({ detail: 'Admin access required' });
-        await db`DELETE FROM starlink_accounts WHERE account_id = ${accountId}`;
+        const existing = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (existing.length === 0) return res.status(404).json({ detail: 'Account not found' });
+        await db`DELETE FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         await db`DELETE FROM billing_records WHERE account_id = ${accountId}`;
         await db`DELETE FROM support_tickets WHERE account_id = ${accountId}`;
         return res.json({ message: 'Account deleted' });
