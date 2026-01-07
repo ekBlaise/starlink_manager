@@ -394,6 +394,104 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   res.json(user);
 });
 
+// Google OAuth callback
+app.post('/api/auth/google/callback', async (req, res) => {
+  try {
+    const { code, redirect_uri } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ detail: 'Authorization code required' });
+    }
+    
+    // Exchange code for tokens
+    const fetch = (await import('node-fetch')).default;
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirect_uri,
+        grant_type: 'authorization_code',
+      }),
+    });
+    
+    const tokens = await tokenResponse.json();
+    
+    if (tokens.error) {
+      console.error('Google token error:', tokens);
+      return res.status(400).json({ detail: tokens.error_description || 'Failed to exchange code' });
+    }
+    
+    // Get user info from Google
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    
+    const googleUser = await userInfoResponse.json();
+    
+    if (!googleUser.email) {
+      return res.status(400).json({ detail: 'Failed to get user info from Google' });
+    }
+    
+    // Check if user exists
+    let users = await sql`SELECT * FROM users WHERE email = ${googleUser.email}`;
+    let userId;
+    
+    if (users.length === 0) {
+      // Create new user
+      userId = `user_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+      await sql`
+        INSERT INTO users (user_id, email, name, picture, role)
+        VALUES (${userId}, ${googleUser.email}, ${googleUser.name}, ${googleUser.picture || null}, 'admin')
+      `;
+    } else {
+      // Update existing user
+      userId = users[0].user_id;
+      await sql`UPDATE users SET name = ${googleUser.name}, picture = ${googleUser.picture || null} WHERE user_id = ${userId}`;
+    }
+    
+    // Store Gmail tokens if available (for email sync)
+    if (tokens.refresh_token) {
+      await sql`
+        CREATE TABLE IF NOT EXISTS gmail_tokens (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR(50) UNIQUE NOT NULL,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT,
+          expires_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+      
+      const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+      await sql`
+        INSERT INTO gmail_tokens (user_id, access_token, refresh_token, expires_at)
+        VALUES (${userId}, ${tokens.access_token}, ${tokens.refresh_token}, ${expiresAt})
+        ON CONFLICT (user_id) DO UPDATE SET
+          access_token = ${tokens.access_token},
+          refresh_token = COALESCE(${tokens.refresh_token}, gmail_tokens.refresh_token),
+          expires_at = ${expiresAt}
+      `;
+    }
+    
+    // Create JWT token
+    const token = createJwtToken(userId);
+    
+    // Get user data
+    const userResult = await sql`SELECT user_id, email, name, picture, phone_number, role, created_at FROM users WHERE user_id = ${userId}`;
+    
+    res.json({
+      token,
+      user: userResult[0]
+    });
+  } catch (error) {
+    console.error('Google callback error:', error);
+    res.status(500).json({ detail: 'Google authentication failed' });
+  }
+});
+
 app.put('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const { name, phone_number } = req.body;
