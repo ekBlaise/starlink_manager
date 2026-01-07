@@ -455,17 +455,18 @@ app.post('/api/accounts', authenticateToken, async (req, res) => {
 app.get('/api/accounts', authenticateToken, async (req, res) => {
   try {
     const { search, status, account_status } = req.query;
+    const userId = req.user.user_id;
     
     let accounts;
     if (search) {
       const searchPattern = `%${search}%`;
       accounts = await sql`
         SELECT * FROM starlink_accounts 
-        WHERE (account_name ILIKE ${searchPattern} OR location ILIKE ${searchPattern} OR account_email ILIKE ${searchPattern} OR kit_number ILIKE ${searchPattern})
+        WHERE user_id = ${userId} AND (account_name ILIKE ${searchPattern} OR location ILIKE ${searchPattern} OR account_email ILIKE ${searchPattern} OR kit_number ILIKE ${searchPattern})
         ORDER BY created_at DESC
       `;
     } else {
-      accounts = await sql`SELECT * FROM starlink_accounts ORDER BY created_at DESC`;
+      accounts = await sql`SELECT * FROM starlink_accounts WHERE user_id = ${userId} ORDER BY created_at DESC`;
     }
     
     // Filter by online status
@@ -489,7 +490,7 @@ app.get('/api/accounts', authenticateToken, async (req, res) => {
 
 app.get('/api/accounts/:accountId', authenticateToken, async (req, res) => {
   try {
-    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId}`;
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     if (accounts.length === 0) {
       return res.status(404).json({ detail: 'Account not found' });
     }
