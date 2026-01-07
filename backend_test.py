@@ -451,6 +451,147 @@ class StarlinkAPITester:
             self.log_test("Get Notifications Count", False, f"Response: {response}")
             return False
 
+    # ==================== GOOGLE OAUTH & GMAIL SYNC TESTS ====================
+    
+    def test_google_oauth_callback_missing_code(self):
+        """Test Google OAuth callback with missing code"""
+        success, response = self.make_request('POST', 'auth/google/callback', {}, 400)
+        if success and 'Authorization code required' in response.get('detail', ''):
+            self.log_test("Google OAuth Callback - Missing Code", True)
+            return True
+        else:
+            self.log_test("Google OAuth Callback - Missing Code", False, f"Response: {response}")
+            return False
+
+    def test_google_oauth_callback_invalid_code(self):
+        """Test Google OAuth callback with invalid code"""
+        invalid_data = {
+            "code": "invalid_auth_code_12345",
+            "redirect_uri": "http://localhost:3000/login"
+        }
+        success, response = self.make_request('POST', 'auth/google/callback', invalid_data, 400)
+        if success and ('error' in response.get('detail', '') or 'Failed to exchange code' in response.get('detail', '')):
+            self.log_test("Google OAuth Callback - Invalid Code", True)
+            return True
+        else:
+            self.log_test("Google OAuth Callback - Invalid Code", False, f"Response: {response}")
+            return False
+
+    def test_google_oauth_callback_valid_format(self):
+        """Test Google OAuth callback with valid format (will fail due to invalid code but should accept format)"""
+        valid_format_data = {
+            "code": "4/0AeaYSHBqwX7VQxz123456789",  # Valid format but fake code
+            "redirect_uri": "http://localhost:3000/login"
+        }
+        success, response = self.make_request('POST', 'auth/google/callback', valid_format_data, 400)
+        # Should return 400 with Google-specific error, not format error
+        if success and ('error' in response.get('detail', '') or 'Failed to exchange code' in response.get('detail', '')):
+            self.log_test("Google OAuth Callback - Valid Format", True)
+            return True
+        else:
+            self.log_test("Google OAuth Callback - Valid Format", False, f"Response: {response}")
+            return False
+
+    def test_gmail_status_unauthenticated(self):
+        """Test Gmail status without authentication"""
+        # Temporarily remove token
+        original_token = self.token
+        self.token = None
+        success, response = self.make_request('GET', 'gmail/status', None, 401)
+        self.token = original_token  # Restore token
+        
+        if success and 'Not authenticated' in response.get('detail', ''):
+            self.log_test("Gmail Status - Unauthenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Status - Unauthenticated", False, f"Response: {response}")
+            return False
+
+    def test_gmail_status_authenticated(self):
+        """Test Gmail status with authentication (should return not connected)"""
+        success, response = self.make_request('GET', 'gmail/status', None, 200)
+        if success and 'connected' in response and response['connected'] == False:
+            self.log_test("Gmail Status - Authenticated (Not Connected)", True)
+            return True
+        else:
+            self.log_test("Gmail Status - Authenticated (Not Connected)", False, f"Response: {response}")
+            return False
+
+    def test_gmail_disconnect_unauthenticated(self):
+        """Test Gmail disconnect without authentication"""
+        # Temporarily remove token
+        original_token = self.token
+        self.token = None
+        success, response = self.make_request('POST', 'gmail/disconnect', {}, 401)
+        self.token = original_token  # Restore token
+        
+        if success and 'Not authenticated' in response.get('detail', ''):
+            self.log_test("Gmail Disconnect - Unauthenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Disconnect - Unauthenticated", False, f"Response: {response}")
+            return False
+
+    def test_gmail_disconnect_authenticated(self):
+        """Test Gmail disconnect with authentication"""
+        success, response = self.make_request('POST', 'gmail/disconnect', {}, 200)
+        if success and 'message' in response and 'disconnected' in response['message'].lower():
+            self.log_test("Gmail Disconnect - Authenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Disconnect - Authenticated", False, f"Response: {response}")
+            return False
+
+    def test_gmail_sync_unauthenticated(self):
+        """Test Gmail sync without authentication"""
+        # Temporarily remove token
+        original_token = self.token
+        self.token = None
+        success, response = self.make_request('POST', 'gmail/sync', {}, 401)
+        self.token = original_token  # Restore token
+        
+        if success and 'Not authenticated' in response.get('detail', ''):
+            self.log_test("Gmail Sync - Unauthenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Sync - Unauthenticated", False, f"Response: {response}")
+            return False
+
+    def test_gmail_sync_not_connected(self):
+        """Test Gmail sync when Gmail is not connected"""
+        success, response = self.make_request('POST', 'gmail/sync', {}, 400)
+        if success and 'Gmail not connected' in response.get('detail', ''):
+            self.log_test("Gmail Sync - Not Connected", True)
+            return True
+        else:
+            self.log_test("Gmail Sync - Not Connected", False, f"Response: {response}")
+            return False
+
+    def test_gmail_emails_unauthenticated(self):
+        """Test Gmail emails without authentication"""
+        # Temporarily remove token
+        original_token = self.token
+        self.token = None
+        success, response = self.make_request('GET', 'gmail/emails', None, 401)
+        self.token = original_token  # Restore token
+        
+        if success and 'Not authenticated' in response.get('detail', ''):
+            self.log_test("Gmail Emails - Unauthenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Emails - Unauthenticated", False, f"Response: {response}")
+            return False
+
+    def test_gmail_emails_authenticated(self):
+        """Test Gmail emails with authentication (should return empty list)"""
+        success, response = self.make_request('GET', 'gmail/emails', None, 200)
+        if success and isinstance(response, list):
+            self.log_test("Gmail Emails - Authenticated", True)
+            return True
+        else:
+            self.log_test("Gmail Emails - Authenticated", False, f"Response: {response}")
+            return False
+
     def run_all_tests(self):
         """Run all API tests in sequence"""
         print("🚀 Starting Starlink Manager API Tests")
