@@ -363,15 +363,28 @@ module.exports = async function handler(req, res) {
       const { user, error } = await authenticateRequest(req);
       if (error) return res.status(401).json({ detail: error });
       
-      const totalAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts`;
-      const onlineAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE is_online = true`;
-      const activeAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE status = 'active'`;
-      const inactiveAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE status IN ('inactive', 'cancelled')`;
-      const openTickets = await db`SELECT COUNT(*) as count FROM support_tickets WHERE status = 'open'`;
-      const totalDevices = await db`SELECT COUNT(*) as count FROM devices`;
-      const unreadNotifications = await db`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${user.user_id} AND is_read = false`;
+      const userId = user.user_id;
+      const totalAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE user_id = ${userId}`;
+      const onlineAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE user_id = ${userId} AND is_online = true`;
+      const activeAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE user_id = ${userId} AND status = 'active'`;
+      const inactiveAccounts = await db`SELECT COUNT(*) as count FROM starlink_accounts WHERE user_id = ${userId} AND status IN ('inactive', 'cancelled')`;
       
-      const accounts = await db`SELECT * FROM starlink_accounts WHERE status = 'active'`;
+      const userAccounts = await db`SELECT account_id FROM starlink_accounts WHERE user_id = ${userId}`;
+      const accountIds = userAccounts.map(a => a.account_id);
+      
+      let openTickets = { count: 0 };
+      let totalDevices = { count: 0 };
+      
+      if (accountIds.length > 0) {
+        const ticketResult = await db`SELECT COUNT(*) as count FROM support_tickets WHERE account_id = ANY(${accountIds}) AND status = 'open'`;
+        openTickets = ticketResult[0];
+        const deviceResult = await db`SELECT COUNT(*) as count FROM devices WHERE account_id = ANY(${accountIds})`;
+        totalDevices = deviceResult[0];
+      }
+      
+      const unreadNotifications = await db`SELECT COUNT(*) as count FROM notifications WHERE user_id = ${userId} AND is_read = false`;
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE user_id = ${userId} AND status = 'active'`;
       const now = new Date();
       const currentDay = now.getDate();
       const upcomingPayments = [];
@@ -382,7 +395,10 @@ module.exports = async function handler(req, res) {
       }
       upcomingPayments.sort((a, b) => a.days_until - b.days_until);
       
-      const recentPayments = await db`SELECT b.*, a.account_name FROM billing_records b LEFT JOIN starlink_accounts a ON b.account_id = a.account_id ORDER BY b.created_at DESC LIMIT 5`;
+      let recentPayments = [];
+      if (accountIds.length > 0) {
+        recentPayments = await db`SELECT b.*, a.account_name FROM billing_records b LEFT JOIN starlink_accounts a ON b.account_id = a.account_id WHERE b.account_id = ANY(${accountIds}) ORDER BY b.created_at DESC LIMIT 5`;
+      }
       
       return res.json({
         total_accounts: parseInt(totalAccounts[0].count),
@@ -390,8 +406,8 @@ module.exports = async function handler(req, res) {
         offline_accounts: parseInt(totalAccounts[0].count) - parseInt(onlineAccounts[0].count),
         active_accounts: parseInt(activeAccounts[0].count),
         inactive_accounts: parseInt(inactiveAccounts[0].count),
-        open_tickets: parseInt(openTickets[0].count),
-        total_devices: parseInt(totalDevices[0].count),
+        open_tickets: parseInt(openTickets.count || 0),
+        total_devices: parseInt(totalDevices.count || 0),
         unread_notifications: parseInt(unreadNotifications[0].count),
         upcoming_payments: upcomingPayments,
         recent_payments: recentPayments
