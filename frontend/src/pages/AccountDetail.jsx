@@ -116,42 +116,6 @@ export default function AccountDetail() {
 
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
 
-  // Handle Gmail OAuth callback
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const code = params.get('code');
-    
-    if (code && accountId) {
-      handleGmailCallback(code);
-      // Clear the URL params
-      window.history.replaceState({}, document.title, `/accounts/${accountId}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, accountId]);
-
-  const handleGmailCallback = async (code) => {
-    try {
-      const response = await fetch(`${API}/accounts/${accountId}/gmail/connect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
-        credentials: "include",
-        body: JSON.stringify({ 
-          code, 
-          redirect_uri: window.location.origin + `/accounts/${accountId}` 
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success("Gmail connected successfully!");
-        checkGmailStatus();
-      } else {
-        toast.error(data.detail || "Failed to connect Gmail");
-      }
-    } catch (error) {
-      toast.error("Connection error");
-    }
-  };
-
   const checkGmailStatus = async () => {
     try {
       const response = await fetch(`${API}/accounts/${accountId}/gmail/status`, {
