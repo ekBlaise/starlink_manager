@@ -29,6 +29,7 @@ export default function Register() {
     if (code) {
       handleGoogleCallback(code);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   const handleGoogleCallback = async (code) => {

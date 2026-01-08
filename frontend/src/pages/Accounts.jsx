@@ -60,6 +60,7 @@ export default function Accounts() {
 
   useEffect(() => {
     fetchAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, accountStatusFilter]);
 
   const fetchAccounts = async () => {
