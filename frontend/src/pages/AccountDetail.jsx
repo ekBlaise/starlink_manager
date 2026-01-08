@@ -77,7 +77,6 @@ export default function AccountDetail() {
   const auth = useAuth();
   const { accountId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
