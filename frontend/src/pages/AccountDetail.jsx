@@ -409,7 +409,7 @@ export default function AccountDetail() {
                 {editing ? (
                   <Input type="number" step="0.01" value={editData.monthly_amount} onChange={(e) => setEditData({ ...editData, monthly_amount: parseFloat(e.target.value) || 0 })} className="mt-1" />
                 ) : (
-                  <p className="data-value mt-1 text-primary">${account.monthly_amount?.toFixed(2)}</p>
+                  <p className="data-value mt-1 text-primary">${parseFloat(account.monthly_amount || 0).toFixed(2)}</p>
                 )}
               </div>
               <div>
@@ -753,7 +753,7 @@ export default function AccountDetail() {
                           <Badge className={record.is_paid !== false ? 'badge-online' : 'badge-open'}>
                             {record.is_paid !== false ? 'Paid' : 'Pending'}
                           </Badge>
-                          <span className="data-value text-primary text-lg">${record.amount.toFixed(2)}</span>
+                          <span className="data-value text-primary text-lg">${parseFloat(record.amount || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     ))}
