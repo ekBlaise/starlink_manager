@@ -197,6 +197,30 @@ export default function Accounts() {
                     />
                   </div>
                 </div>
+                <div className="form-group">
+                  <Label className="form-label flex items-center gap-2">
+                    <Key className="w-4 h-4" /> Account Password (Optional)
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={formData.account_password}
+                      onChange={(e) => setFormData({ ...formData, account_password: e.target.value })}
+                      placeholder="Starlink account password (stored encrypted)"
+                      data-testid="account-password-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Password is encrypted and can only be viewed after re-authentication
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="form-group">
                     <Label className="form-label">Billing Day (1-31)</Label>
