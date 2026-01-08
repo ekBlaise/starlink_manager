@@ -70,10 +70,14 @@ import { toast } from "sonner";
 import { useAuth, API } from "@/App";
 import { format, formatDistanceToNow } from "date-fns";
 
+// Google OAuth config
+const GOOGLE_CLIENT_ID = "1076605813360-tkleimc080a64nhu4ab4f4rk9ifj6qps.apps.googleusercontent.com";
+
 export default function AccountDetail() {
   const auth = useAuth();
   const { accountId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -105,7 +109,127 @@ export default function AccountDetail() {
   const [revealingPassword, setRevealingPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // Gmail sync state
+  const [gmailStatus, setGmailStatus] = useState({ connected: false });
+  const [syncingEmails, setSyncingEmails] = useState(false);
+  const [syncedEmails, setSyncedEmails] = useState([]);
+
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
+
+  // Handle Gmail OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    
+    if (code && accountId) {
+      handleGmailCallback(code);
+      // Clear the URL params
+      window.history.replaceState({}, document.title, `/accounts/${accountId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, accountId]);
+
+  const handleGmailCallback = async (code) => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        credentials: "include",
+        body: JSON.stringify({ 
+          code, 
+          redirect_uri: window.location.origin + `/accounts/${accountId}` 
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Gmail connected successfully!");
+        checkGmailStatus();
+      } else {
+        toast.error(data.detail || "Failed to connect Gmail");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    }
+  };
+
+  const checkGmailStatus = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/status`, {
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGmailStatus(data);
+        if (data.connected) {
+          fetchSyncedEmails();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check Gmail status");
+    }
+  };
+
+  const fetchSyncedEmails = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/emails`, {
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSyncedEmails(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch synced emails");
+    }
+  };
+
+  const connectGmail = () => {
+    const redirectUri = encodeURIComponent(window.location.origin + `/accounts/${accountId}`);
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    window.location.href = authUrl;
+  };
+
+  const disconnectGmail = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/disconnect`, {
+        method: "POST",
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        setGmailStatus({ connected: false });
+        setSyncedEmails([]);
+        toast.success("Gmail disconnected");
+      }
+    } catch (error) {
+      toast.error("Failed to disconnect Gmail");
+    }
+  };
+
+  const syncEmails = async () => {
+    setSyncingEmails(true);
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/sync`, {
+        method: "POST",
+        credentials: "include",
+        headers,
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success(data.message);
+        fetchSyncedEmails();
+      } else {
+        toast.error(data.detail || "Failed to sync emails");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    } finally {
+      setSyncingEmails(false);
+    }
+  };
 
   useEffect(() => {
     fetchAccount();
