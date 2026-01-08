@@ -96,6 +96,7 @@ export default function AccountDetail() {
     fetchTickets();
     fetchExtenders();
     fetchDevices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
   const fetchAccount = async () => {
