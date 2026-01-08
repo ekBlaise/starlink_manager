@@ -463,8 +463,8 @@ module.exports = async function handler(req, res) {
       if (method === 'GET') {
         const { search, status, account_status } = req.query;
         let accounts = search 
-          ? await db`SELECT * FROM starlink_accounts WHERE user_id = ${user.user_id} AND (account_name ILIKE ${'%'+search+'%'} OR location ILIKE ${'%'+search+'%'} OR account_email ILIKE ${'%'+search+'%'}) ORDER BY created_at DESC`
-          : await db`SELECT * FROM starlink_accounts WHERE user_id = ${user.user_id} ORDER BY created_at DESC`;
+          ? await db`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE user_id = ${user.user_id} AND (account_name ILIKE ${'%'+search+'%'} OR location ILIKE ${'%'+search+'%'} OR account_email ILIKE ${'%'+search+'%'}) ORDER BY created_at DESC`
+          : await db`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE user_id = ${user.user_id} ORDER BY created_at DESC`;
         if (status === 'online') accounts = accounts.filter(a => a.is_online === true);
         else if (status === 'offline') accounts = accounts.filter(a => a.is_online === false);
         if (account_status && account_status !== 'all') accounts = accounts.filter(a => a.status === account_status);
@@ -473,11 +473,12 @@ module.exports = async function handler(req, res) {
       
       if (method === 'POST') {
         if (user.role !== 'admin') return res.status(403).json({ detail: 'Admin access required' });
-        const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount } = req.body;
+        const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, account_password } = req.body;
         if (billing_day < 1 || billing_day > 31) return res.status(400).json({ detail: 'Billing day must be between 1 and 31' });
         const accountId = `acc_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-        await db`INSERT INTO starlink_accounts (account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, user_id) VALUES (${accountId}, ${account_name}, ${location}, ${account_email}, ${kit_number}, ${notes || ''}, ${billing_day || 1}, ${monthly_amount || 0}, ${user.user_id})`;
-        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId}`;
+        const encryptedPwd = account_password ? encryptPassword(account_password) : null;
+        await db`INSERT INTO starlink_accounts (account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, user_id, encrypted_password) VALUES (${accountId}, ${account_name}, ${location}, ${account_email}, ${kit_number}, ${notes || ''}, ${billing_day || 1}, ${monthly_amount || 0}, ${user.user_id}, ${encryptedPwd})`;
+        const accounts = await db`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${accountId}`;
         return res.json(accounts[0]);
       }
     }
@@ -490,7 +491,7 @@ module.exports = async function handler(req, res) {
       const accountId = accountMatch[1];
       
       if (method === 'GET') {
-        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        const accounts = await db`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
         return res.json(accounts[0]);
       }
@@ -499,7 +500,7 @@ module.exports = async function handler(req, res) {
         if (user.role !== 'admin') return res.status(403).json({ detail: 'Admin access required' });
         const existing = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (existing.length === 0) return res.status(404).json({ detail: 'Account not found' });
-        const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status } = req.body;
+        const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status, account_password } = req.body;
         if (account_name !== undefined) await db`UPDATE starlink_accounts SET account_name = ${account_name} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (location !== undefined) await db`UPDATE starlink_accounts SET location = ${location} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (account_email !== undefined) await db`UPDATE starlink_accounts SET account_email = ${account_email} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
@@ -509,7 +510,11 @@ module.exports = async function handler(req, res) {
         if (monthly_amount !== undefined) await db`UPDATE starlink_accounts SET monthly_amount = ${monthly_amount} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (is_online !== undefined) await db`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         if (status !== undefined) await db`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
-        const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        if (account_password !== undefined) {
+          const encryptedPwd = account_password ? encryptPassword(account_password) : null;
+          await db`UPDATE starlink_accounts SET encrypted_password = ${encryptedPwd} WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+        }
+        const accounts = await db`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
         return res.json(accounts[0]);
       }
       
@@ -522,6 +527,48 @@ module.exports = async function handler(req, res) {
         await db`DELETE FROM support_tickets WHERE account_id = ${accountId}`;
         return res.json({ message: 'Account deleted' });
       }
+    }
+
+    // REVEAL ACCOUNT PASSWORD ROUTE
+    const revealPasswordMatch = route.match(/^accounts\/([^\/]+)\/reveal-password$/);
+    if (revealPasswordMatch && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = revealPasswordMatch[1];
+      const { password } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ detail: 'Password required for verification' });
+      }
+      
+      // Verify user's password
+      const users = await db`SELECT * FROM users WHERE user_id = ${user.user_id}`;
+      if (users.length === 0 || !users[0].password_hash) {
+        return res.status(401).json({ detail: 'Cannot verify - no password set (Google-only account)' });
+      }
+      
+      const valid = await verifyPassword(password, users[0].password_hash);
+      if (!valid) {
+        return res.status(401).json({ detail: 'Invalid password' });
+      }
+      
+      // Get the encrypted password
+      const accounts = await db`SELECT encrypted_password FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) {
+        return res.status(404).json({ detail: 'Account not found' });
+      }
+      
+      if (!accounts[0].encrypted_password) {
+        return res.status(404).json({ detail: 'No password stored for this account' });
+      }
+      
+      // Decrypt and return the password
+      const decryptedPassword = decryptPassword(accounts[0].encrypted_password);
+      if (!decryptedPassword) {
+        return res.status(500).json({ detail: 'Failed to decrypt password' });
+      }
+      
+      return res.json({ password: decryptedPassword });
     }
 
     // BILLING ROUTES
