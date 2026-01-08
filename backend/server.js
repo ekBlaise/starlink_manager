@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { neon, neonConfig } = require('@neondatabase/serverless');
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
+const crypto = require('crypto');
 
 dotenv.config();
 
@@ -20,6 +21,35 @@ const sql = neon(process.env.DATABASE_URL);
 // JWT Config
 const JWT_SECRET = process.env.JWT_SECRET || 'starlink-manager-secret-key';
 const JWT_EXPIRATION = '7d';
+
+// Encryption key for Starlink account passwords (derived from JWT_SECRET)
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(JWT_SECRET).digest();
+const IV_LENGTH = 16;
+
+// Encryption helpers for Starlink account passwords
+const encryptPassword = (text) => {
+  if (!text) return null;
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+};
+
+const decryptPassword = (encrypted) => {
+  if (!encrypted) return null;
+  try {
+    const [ivHex, encryptedText] = encrypted.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    console.error('Decryption error:', error);
+    return null;
+  }
+};
 
 // Google OAuth Config
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1076605813360-tkleimc080a64nhu4ab4f4rk9ifj6qps.apps.googleusercontent.com';
