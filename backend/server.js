@@ -602,12 +602,13 @@ app.get('/api/accounts', authenticateToken, async (req, res) => {
     if (search) {
       const searchPattern = `%${search}%`;
       accounts = await sql`
-        SELECT * FROM starlink_accounts 
+        SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password 
+        FROM starlink_accounts 
         WHERE user_id = ${userId} AND (account_name ILIKE ${searchPattern} OR location ILIKE ${searchPattern} OR account_email ILIKE ${searchPattern} OR kit_number ILIKE ${searchPattern})
         ORDER BY created_at DESC
       `;
     } else {
-      accounts = await sql`SELECT * FROM starlink_accounts WHERE user_id = ${userId} ORDER BY created_at DESC`;
+      accounts = await sql`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE user_id = ${userId} ORDER BY created_at DESC`;
     }
     
     // Filter by online status
@@ -631,7 +632,7 @@ app.get('/api/accounts', authenticateToken, async (req, res) => {
 
 app.get('/api/accounts/:accountId', authenticateToken, async (req, res) => {
   try {
-    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    const accounts = await sql`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     if (accounts.length === 0) {
       return res.status(404).json({ detail: 'Account not found' });
     }
