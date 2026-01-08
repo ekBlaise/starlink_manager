@@ -215,6 +215,30 @@ frontend:
         agent: "testing"
         comment: "✅ PASSED - Account creation functionality working: Add Account button found and clickable, modal opens correctly with form fields, form accepts test data input, submit button functional. Minor: New account may not immediately appear in list due to backend syntax errors, but form submission works"
 
+  - task: "Frontend Password Field - Add Account Form"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Accounts.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED - Add Account form includes 'Account Password (Optional)' field with Key icon (lines 202-225). Field has show/hide toggle, proper placeholder text, and explanation about encryption. Field is properly integrated with form submission."
+
+  - task: "Frontend Password Field - Account Detail Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AccountDetail.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED - Account Detail page shows password section with Key icon (lines 452-490). When has_password is true, shows masked password (••••••••) with 'Reveal' button. When no password stored, shows 'No password stored'. Reveal button opens modal for password verification (lines 932-985)."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
