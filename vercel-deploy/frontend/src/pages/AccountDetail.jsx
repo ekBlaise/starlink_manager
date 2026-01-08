@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, 
   Satellite, 
@@ -77,7 +77,6 @@ export default function AccountDetail() {
   const auth = useAuth();
   const { accountId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -116,42 +115,6 @@ export default function AccountDetail() {
 
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
 
-  // Handle Gmail OAuth callback
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const code = params.get('code');
-    
-    if (code && accountId) {
-      handleGmailCallback(code);
-      // Clear the URL params
-      window.history.replaceState({}, document.title, `/accounts/${accountId}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, accountId]);
-
-  const handleGmailCallback = async (code) => {
-    try {
-      const response = await fetch(`${API}/accounts/${accountId}/gmail/connect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
-        credentials: "include",
-        body: JSON.stringify({ 
-          code, 
-          redirect_uri: window.location.origin + `/accounts/${accountId}` 
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        toast.success("Gmail connected successfully!");
-        checkGmailStatus();
-      } else {
-        toast.error(data.detail || "Failed to connect Gmail");
-      }
-    } catch (error) {
-      toast.error("Connection error");
-    }
-  };
-
   const checkGmailStatus = async () => {
     try {
       const response = await fetch(`${API}/accounts/${accountId}/gmail/status`, {
@@ -186,7 +149,11 @@ export default function AccountDetail() {
   };
 
   const connectGmail = () => {
-    const redirectUri = encodeURIComponent(window.location.origin + `/accounts/${accountId}`);
+    // Store the account ID in localStorage for the callback to use
+    localStorage.setItem('gmail_connect_account_id', accountId);
+    
+    // Use a fixed callback URL that's registered in Google Console
+    const redirectUri = encodeURIComponent(window.location.origin + '/gmail-callback');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     window.location.href = authUrl;
