@@ -267,6 +267,36 @@ export default function AccountDetail() {
     } catch (error) {}
   };
 
+  const handleRevealPassword = async (e) => {
+    e.preventDefault();
+    setRevealingPassword(true);
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/reveal-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        credentials: "include",
+        body: JSON.stringify({ password: userPassword }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setRevealPassword(data.password);
+        setUserPassword("");
+      } else {
+        toast.error(data.detail || "Failed to reveal password");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    } finally {
+      setRevealingPassword(false);
+    }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setRevealPassword("");
+    setUserPassword("");
+  };
+
   const addExtender = async (e) => {
     e.preventDefault();
     try {
