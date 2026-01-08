@@ -93,7 +93,8 @@ async function initDatabase() {
     await db`CREATE TABLE IF NOT EXISTS extenders (id SERIAL PRIMARY KEY, extender_id VARCHAR(50) UNIQUE NOT NULL, account_id VARCHAR(50) NOT NULL, name VARCHAR(255) NOT NULL, ip_address VARCHAR(50) DEFAULT '', location VARCHAR(255) DEFAULT '', is_online BOOLEAN DEFAULT true, devices_connected INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
     await db`CREATE TABLE IF NOT EXISTS devices (id SERIAL PRIMARY KEY, device_id VARCHAR(50) UNIQUE NOT NULL, account_id VARCHAR(50) NOT NULL, extender_id VARCHAR(50), name VARCHAR(255) NOT NULL, mac_address VARCHAR(50) NOT NULL, device_type VARCHAR(50) DEFAULT 'unknown', is_whitelisted BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
     await db`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, notification_id VARCHAR(50) UNIQUE NOT NULL, user_id VARCHAR(50) NOT NULL, account_id VARCHAR(50), title VARCHAR(255) NOT NULL, message TEXT NOT NULL, notification_type VARCHAR(50) DEFAULT 'system', is_read BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
-    await db`CREATE TABLE IF NOT EXISTS gmail_tokens (id SERIAL PRIMARY KEY, user_id VARCHAR(50) UNIQUE NOT NULL, access_token TEXT NOT NULL, refresh_token TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
+    await db`CREATE TABLE IF NOT EXISTS gmail_tokens (id SERIAL PRIMARY KEY, account_id VARCHAR(50) UNIQUE NOT NULL, user_id VARCHAR(50) NOT NULL, access_token TEXT NOT NULL, refresh_token TEXT, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
+    await db`ALTER TABLE gmail_tokens ADD COLUMN IF NOT EXISTS account_id VARCHAR(50)`;
   } catch (error) {
     console.error('Database init error:', error);
     throw error;
