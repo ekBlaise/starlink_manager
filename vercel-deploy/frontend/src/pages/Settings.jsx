@@ -24,6 +24,7 @@ export default function Settings() {
 
   useEffect(() => {
     checkGmailStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkGmailStatus = async () => {
@@ -147,6 +148,7 @@ export default function Settings() {
     if (code) {
       handleGmailCallback(code);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleGmailCallback = async (code) => {

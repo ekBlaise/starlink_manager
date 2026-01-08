@@ -26,6 +26,7 @@ export default function Login() {
     if (code) {
       handleGoogleCallback(code);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   const handleGoogleCallback = async (code) => {

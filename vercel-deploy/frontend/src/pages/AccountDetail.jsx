@@ -20,7 +20,11 @@ import {
   Check,
   Ban,
   CheckCircle,
-  DollarSign
+  DollarSign,
+  Eye,
+  EyeOff,
+  Lock,
+  Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +39,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -81,12 +87,19 @@ export default function AccountDetail() {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showExtenderModal, setShowExtenderModal] = useState(false);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Form states
   const [paymentForm, setPaymentForm] = useState({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "", is_paid: true });
   const [ticketForm, setTicketForm] = useState({ title: "", description: "", priority: "medium" });
   const [extenderForm, setExtenderForm] = useState({ name: "", ip_address: "", location: "" });
   const [deviceForm, setDeviceForm] = useState({ name: "", mac_address: "", device_type: "unknown", extender_id: "main_router" });
+
+  // Password reveal state
+  const [revealPassword, setRevealPassword] = useState("");
+  const [userPassword, setUserPassword] = useState("");
+  const [revealingPassword, setRevealingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
 
@@ -96,6 +109,7 @@ export default function AccountDetail() {
     fetchTickets();
     fetchExtenders();
     fetchDevices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
   const fetchAccount = async () => {
@@ -253,6 +267,36 @@ export default function AccountDetail() {
     } catch (error) {}
   };
 
+  const handleRevealPassword = async (e) => {
+    e.preventDefault();
+    setRevealingPassword(true);
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/reveal-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        credentials: "include",
+        body: JSON.stringify({ password: userPassword }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setRevealPassword(data.password);
+        setUserPassword("");
+      } else {
+        toast.error(data.detail || "Failed to reveal password");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    } finally {
+      setRevealingPassword(false);
+    }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setRevealPassword("");
+    setUserPassword("");
+  };
+
   const addExtender = async (e) => {
     e.preventDefault();
     try {
@@ -405,11 +449,51 @@ export default function AccountDetail() {
                 )}
               </div>
               <div>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider flex items-center gap-2">
+                  <Key className="w-3 h-3" /> Account Password
+                </Label>
+                {editing ? (
+                  <div className="relative mt-1">
+                    <Input 
+                      type={showNewPassword ? "text" : "password"}
+                      value={editData.account_password || ""} 
+                      onChange={(e) => setEditData({ ...editData, account_password: e.target.value })} 
+                      placeholder="Enter new password (leave empty to keep current)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-1">
+                    {account.has_password ? (
+                      <>
+                        <span className="text-muted-foreground">••••••••</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setShowPasswordModal(true)}
+                          className="h-7 text-xs"
+                        >
+                          <Eye className="w-3 h-3 mr-1" /> Reveal
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No password stored</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Monthly Amount</Label>
                 {editing ? (
                   <Input type="number" step="0.01" value={editData.monthly_amount} onChange={(e) => setEditData({ ...editData, monthly_amount: parseFloat(e.target.value) || 0 })} className="mt-1" />
                 ) : (
-                  <p className="data-value mt-1 text-primary">${account.monthly_amount?.toFixed(2)}</p>
+                  <p className="data-value mt-1 text-primary">${parseFloat(account.monthly_amount || 0).toFixed(2)}</p>
                 )}
               </div>
               <div>
@@ -753,7 +837,7 @@ export default function AccountDetail() {
                           <Badge className={record.is_paid !== false ? 'badge-online' : 'badge-open'}>
                             {record.is_paid !== false ? 'Paid' : 'Pending'}
                           </Badge>
-                          <span className="data-value text-primary text-lg">${record.amount.toFixed(2)}</span>
+                          <span className="data-value text-primary text-lg">${parseFloat(record.amount || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     ))}
@@ -844,6 +928,61 @@ export default function AccountDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Password Reveal Modal */}
+      <Dialog open={showPasswordModal} onOpenChange={closePasswordModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-cyan-500" />
+              Reveal Account Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter your account password to reveal the Starlink account password.
+            </DialogDescription>
+          </DialogHeader>
+          {revealPassword ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-secondary/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase">Starlink Account Password</Label>
+                <p className="mt-2 font-mono text-lg select-all break-all">{revealPassword}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This password is encrypted in our database and shown only after verification.
+              </p>
+              <DialogFooter>
+                <Button onClick={closePasswordModal}>Close</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <form onSubmit={handleRevealPassword} className="space-y-4">
+              <div>
+                <Label htmlFor="verify-password">Your Password</Label>
+                <Input
+                  id="verify-password"
+                  type="password"
+                  value={userPassword}
+                  onChange={(e) => setUserPassword(e.target.value)}
+                  placeholder="Enter your account password"
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={closePasswordModal}>Cancel</Button>
+                <Button type="submit" disabled={revealingPassword || !userPassword}>
+                  {revealingPassword ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <Eye className="w-4 h-4 mr-2" />
+                  )}
+                  Reveal Password
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
