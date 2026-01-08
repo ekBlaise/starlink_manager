@@ -928,6 +928,61 @@ export default function AccountDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Password Reveal Modal */}
+      <Dialog open={showPasswordModal} onOpenChange={closePasswordModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-cyan-500" />
+              Reveal Account Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter your account password to reveal the Starlink account password.
+            </DialogDescription>
+          </DialogHeader>
+          {revealPassword ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-secondary/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground uppercase">Starlink Account Password</Label>
+                <p className="mt-2 font-mono text-lg select-all break-all">{revealPassword}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This password is encrypted in our database and shown only after verification.
+              </p>
+              <DialogFooter>
+                <Button onClick={closePasswordModal}>Close</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <form onSubmit={handleRevealPassword} className="space-y-4">
+              <div>
+                <Label htmlFor="verify-password">Your Password</Label>
+                <Input
+                  id="verify-password"
+                  type="password"
+                  value={userPassword}
+                  onChange={(e) => setUserPassword(e.target.value)}
+                  placeholder="Enter your account password"
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={closePasswordModal}>Cancel</Button>
+                <Button type="submit" disabled={revealingPassword || !userPassword}>
+                  {revealingPassword ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <Eye className="w-4 h-4 mr-2" />
+                  )}
+                  Reveal Password
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
