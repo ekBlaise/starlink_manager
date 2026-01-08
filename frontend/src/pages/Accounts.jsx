@@ -116,7 +116,9 @@ export default function Accounts() {
           notes: "",
           billing_day: 1,
           monthly_amount: 0,
+          account_password: "",
         });
+        setShowPassword(false);
         fetchAccounts();
       } else {
         const error = await response.json();
