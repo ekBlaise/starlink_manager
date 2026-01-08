@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, 
   Satellite, 
@@ -24,7 +24,11 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Key
+  Key,
+  RefreshCw,
+  Inbox,
+  Link2,
+  Unlink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,10 +70,14 @@ import { toast } from "sonner";
 import { useAuth, API } from "@/App";
 import { format, formatDistanceToNow } from "date-fns";
 
+// Google OAuth config
+const GOOGLE_CLIENT_ID = "1076605813360-tkleimc080a64nhu4ab4f4rk9ifj6qps.apps.googleusercontent.com";
+
 export default function AccountDetail() {
   const auth = useAuth();
   const { accountId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -101,7 +109,127 @@ export default function AccountDetail() {
   const [revealingPassword, setRevealingPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // Gmail sync state
+  const [gmailStatus, setGmailStatus] = useState({ connected: false });
+  const [syncingEmails, setSyncingEmails] = useState(false);
+  const [syncedEmails, setSyncedEmails] = useState([]);
+
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
+
+  // Handle Gmail OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    
+    if (code && accountId) {
+      handleGmailCallback(code);
+      // Clear the URL params
+      window.history.replaceState({}, document.title, `/accounts/${accountId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, accountId]);
+
+  const handleGmailCallback = async (code) => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        credentials: "include",
+        body: JSON.stringify({ 
+          code, 
+          redirect_uri: window.location.origin + `/accounts/${accountId}` 
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Gmail connected successfully!");
+        checkGmailStatus();
+      } else {
+        toast.error(data.detail || "Failed to connect Gmail");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    }
+  };
+
+  const checkGmailStatus = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/status`, {
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGmailStatus(data);
+        if (data.connected) {
+          fetchSyncedEmails();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check Gmail status");
+    }
+  };
+
+  const fetchSyncedEmails = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/emails`, {
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSyncedEmails(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch synced emails");
+    }
+  };
+
+  const connectGmail = () => {
+    const redirectUri = encodeURIComponent(window.location.origin + `/accounts/${accountId}`);
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    window.location.href = authUrl;
+  };
+
+  const disconnectGmail = async () => {
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/disconnect`, {
+        method: "POST",
+        credentials: "include",
+        headers,
+      });
+      if (response.ok) {
+        setGmailStatus({ connected: false });
+        setSyncedEmails([]);
+        toast.success("Gmail disconnected");
+      }
+    } catch (error) {
+      toast.error("Failed to disconnect Gmail");
+    }
+  };
+
+  const syncEmails = async () => {
+    setSyncingEmails(true);
+    try {
+      const response = await fetch(`${API}/accounts/${accountId}/gmail/sync`, {
+        method: "POST",
+        credentials: "include",
+        headers,
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success(data.message);
+        fetchSyncedEmails();
+      } else {
+        toast.error(data.detail || "Failed to sync emails");
+      }
+    } catch (error) {
+      toast.error("Connection error");
+    } finally {
+      setSyncingEmails(false);
+    }
+  };
 
   useEffect(() => {
     fetchAccount();
@@ -109,6 +237,7 @@ export default function AccountDetail() {
     fetchTickets();
     fetchExtenders();
     fetchDevices();
+    checkGmailStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
@@ -599,14 +728,100 @@ export default function AccountDetail() {
           </CardContent>
         </Card>
 
-        {/* Tabs for Billing, Tickets, Extenders, Devices */}
-        <Tabs defaultValue="devices" className="space-y-4">
+        {/* Tabs for Email Sync, Billing, Tickets, Extenders, Devices */}
+        <Tabs defaultValue="emails" className="space-y-4">
           <TabsList className="bg-secondary/50">
+            <TabsTrigger value="emails" data-testid="tab-emails"><Inbox className="w-4 h-4 mr-1" /> Emails ({syncedEmails.length})</TabsTrigger>
             <TabsTrigger value="devices" data-testid="tab-devices">Devices ({devices.length})</TabsTrigger>
             <TabsTrigger value="extenders" data-testid="tab-extenders">Extenders ({extenders.length})</TabsTrigger>
             <TabsTrigger value="billing" data-testid="tab-billing">Billing ({billingRecords.length})</TabsTrigger>
             <TabsTrigger value="tickets" data-testid="tab-tickets">Tickets ({tickets.length})</TabsTrigger>
           </TabsList>
+
+          {/* Emails Tab - Gmail Sync */}
+          <TabsContent value="emails">
+            <Card className="bg-card border-border/40">
+              <CardHeader className="pb-4 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-cyan-500" />
+                    Email Sync for {account?.account_email}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Sync Starlink emails sent to this account's email address
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {gmailStatus.connected ? (
+                    <>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                        <CheckCircle className="w-3 h-3 mr-1" /> Gmail Connected
+                      </Badge>
+                      <Button size="sm" variant="outline" onClick={syncEmails} disabled={syncingEmails}>
+                        {syncingEmails ? (
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        Sync Now
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={disconnectGmail}>
+                        <Unlink className="w-4 h-4 mr-1" /> Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button size="sm" onClick={connectGmail}>
+                      <Link2 className="w-4 h-4 mr-2" /> Connect Gmail
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!gmailStatus.connected ? (
+                  <div className="empty-state py-8">
+                    <Mail className="empty-state-icon" />
+                    <p className="empty-state-title">Gmail Not Connected</p>
+                    <p className="empty-state-description">
+                      Connect the Gmail account that receives emails for {account?.account_email} to sync Starlink notifications
+                    </p>
+                    <Button className="mt-4" onClick={connectGmail}>
+                      <Link2 className="w-4 h-4 mr-2" /> Connect Gmail Account
+                    </Button>
+                  </div>
+                ) : syncedEmails.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {syncedEmails.map((email, i) => (
+                      <div key={email.notification_id} className="p-4 bg-secondary/30 rounded-sm border border-border/30">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{email.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{email.message}</p>
+                            <span className="text-xs text-muted-foreground mt-2 block">
+                              {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state py-8">
+                    <Inbox className="empty-state-icon" />
+                    <p className="empty-state-title">No emails synced yet</p>
+                    <p className="empty-state-description">Click "Sync Now" to fetch Starlink emails</p>
+                    <Button className="mt-4" onClick={syncEmails} disabled={syncingEmails}>
+                      {syncingEmails ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Emails Now
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Devices Tab */}
           <TabsContent value="devices">
