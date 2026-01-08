@@ -20,7 +20,11 @@ import {
   Check,
   Ban,
   CheckCircle,
-  DollarSign
+  DollarSign,
+  Eye,
+  EyeOff,
+  Lock,
+  Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +39,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -81,12 +87,19 @@ export default function AccountDetail() {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showExtenderModal, setShowExtenderModal] = useState(false);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Form states
   const [paymentForm, setPaymentForm] = useState({ amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: "manual", notes: "", is_paid: true });
   const [ticketForm, setTicketForm] = useState({ title: "", description: "", priority: "medium" });
   const [extenderForm, setExtenderForm] = useState({ name: "", ip_address: "", location: "" });
   const [deviceForm, setDeviceForm] = useState({ name: "", mac_address: "", device_type: "unknown", extender_id: "main_router" });
+
+  // Password reveal state
+  const [revealPassword, setRevealPassword] = useState("");
+  const [userPassword, setUserPassword] = useState("");
+  const [revealingPassword, setRevealingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const headers = auth.token ? { Authorization: `Bearer ${auth.token}` } : {};
 
