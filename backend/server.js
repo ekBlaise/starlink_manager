@@ -655,23 +655,11 @@ app.put('/api/accounts/:accountId', authenticateToken, async (req, res) => {
       return res.status(404).json({ detail: 'Account not found' });
     }
     
-    const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status } = req.body;
+    const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, status, account_password } = req.body;
     
     if (billing_day !== undefined && (billing_day < 1 || billing_day > 31)) {
       return res.status(400).json({ detail: 'Billing day must be between 1 and 31' });
     }
-    
-    // Build dynamic update
-    const updates = [];
-    if (account_name !== undefined) updates.push(sql`account_name = ${account_name}`);
-    if (location !== undefined) updates.push(sql`location = ${location}`);
-    if (account_email !== undefined) updates.push(sql`account_email = ${account_email}`);
-    if (kit_number !== undefined) updates.push(sql`kit_number = ${kit_number}`);
-    if (notes !== undefined) updates.push(sql`notes = ${notes}`);
-    if (billing_day !== undefined) updates.push(sql`billing_day = ${billing_day}`);
-    if (monthly_amount !== undefined) updates.push(sql`monthly_amount = ${monthly_amount}`);
-    if (is_online !== undefined) updates.push(sql`is_online = ${is_online}`);
-    if (status !== undefined) updates.push(sql`status = ${status}`);
     
     await sql`UPDATE starlink_accounts SET last_checked = CURRENT_TIMESTAMP WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     
@@ -686,11 +674,60 @@ app.put('/api/accounts/:accountId', authenticateToken, async (req, res) => {
     if (is_online !== undefined) await sql`UPDATE starlink_accounts SET is_online = ${is_online} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     if (status !== undefined) await sql`UPDATE starlink_accounts SET status = ${status} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     
-    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    // Handle password update (encrypt if provided)
+    if (account_password !== undefined) {
+      const encryptedPwd = account_password ? encryptPassword(account_password) : null;
+      await sql`UPDATE starlink_accounts SET encrypted_password = ${encryptedPwd} WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    }
+    
+    const accounts = await sql`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
     res.json(accounts[0]);
   } catch (error) {
     console.error('Update account error:', error);
     res.status(500).json({ detail: 'Failed to update account' });
+  }
+});
+
+// Reveal account password - requires re-authentication with user's password
+app.post('/api/accounts/:accountId/reveal-password', authenticateToken, async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ detail: 'Password required for verification' });
+    }
+    
+    // Verify user's password
+    const users = await sql`SELECT * FROM users WHERE user_id = ${req.user.user_id}`;
+    if (users.length === 0 || !users[0].password_hash) {
+      return res.status(401).json({ detail: 'Cannot verify - no password set (Google-only account)' });
+    }
+    
+    const valid = await verifyPassword(password, users[0].password_hash);
+    if (!valid) {
+      return res.status(401).json({ detail: 'Invalid password' });
+    }
+    
+    // Get the encrypted password
+    const accounts = await sql`SELECT encrypted_password FROM starlink_accounts WHERE account_id = ${req.params.accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    if (!accounts[0].encrypted_password) {
+      return res.status(404).json({ detail: 'No password stored for this account' });
+    }
+    
+    // Decrypt and return the password
+    const decryptedPassword = decryptPassword(accounts[0].encrypted_password);
+    if (!decryptedPassword) {
+      return res.status(500).json({ detail: 'Failed to decrypt password' });
+    }
+    
+    res.json({ password: decryptedPassword });
+  } catch (error) {
+    console.error('Reveal password error:', error);
+    res.status(500).json({ detail: 'Failed to reveal password' });
   }
 });
 
