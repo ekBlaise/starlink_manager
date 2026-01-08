@@ -569,7 +569,7 @@ app.post('/api/accounts', authenticateToken, async (req, res) => {
       return res.status(403).json({ detail: 'Admin access required' });
     }
     
-    const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount } = req.body;
+    const { account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, account_password } = req.body;
     
     if (billing_day < 1 || billing_day > 31) {
       return res.status(400).json({ detail: 'Billing day must be between 1 and 31' });
@@ -577,12 +577,15 @@ app.post('/api/accounts', authenticateToken, async (req, res) => {
     
     const accountId = `acc_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
     
+    // Encrypt the account password if provided
+    const encryptedPwd = account_password ? encryptPassword(account_password) : null;
+    
     await sql`
-      INSERT INTO starlink_accounts (account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, user_id)
-      VALUES (${accountId}, ${account_name}, ${location}, ${account_email}, ${kit_number}, ${notes || ''}, ${billing_day || 1}, ${monthly_amount || 0}, ${req.user.user_id})
+      INSERT INTO starlink_accounts (account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, user_id, encrypted_password)
+      VALUES (${accountId}, ${account_name}, ${location}, ${account_email}, ${kit_number}, ${notes || ''}, ${billing_day || 1}, ${monthly_amount || 0}, ${req.user.user_id}, ${encryptedPwd})
     `;
     
-    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId}`;
+    const accounts = await sql`SELECT account_id, account_name, location, account_email, kit_number, notes, billing_day, monthly_amount, is_online, devices_connected, status, last_checked, user_id, created_at, CASE WHEN encrypted_password IS NOT NULL THEN true ELSE false END as has_password FROM starlink_accounts WHERE account_id = ${accountId}`;
     res.json(accounts[0]);
   } catch (error) {
     console.error('Create account error:', error);
