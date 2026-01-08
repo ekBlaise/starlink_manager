@@ -13,7 +13,10 @@ import {
   ChevronRight,
   X,
   Ban,
-  CheckCircle
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +50,7 @@ export default function Accounts() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [accountStatusFilter, setAccountStatusFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     account_name: "",
     location: "",
@@ -55,6 +59,7 @@ export default function Accounts() {
     notes: "",
     billing_day: 1,
     monthly_amount: 0,
+    account_password: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
