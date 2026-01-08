@@ -629,6 +629,126 @@ class StarlinkAPITester:
             self.log_test("Gmail Emails - Authenticated", False, f"Response: {response}")
             return False
 
+    # ==================== ENCRYPTED PASSWORD TESTS ====================
+    
+    def test_reveal_password_no_password_provided(self):
+        """Test reveal password endpoint without providing password"""
+        if not self.test_account_with_password_id:
+            self.log_test("Reveal Password - No Password Provided", False, "No test account with password ID")
+            return False
+            
+        success, response = self.make_request('POST', f'accounts/{self.test_account_with_password_id}/reveal-password', {}, 400)
+        if success and 'Password required' in response.get('detail', ''):
+            self.log_test("Reveal Password - No Password Provided", True)
+            return True
+        else:
+            self.log_test("Reveal Password - No Password Provided", False, f"Response: {response}")
+            return False
+
+    def test_reveal_password_wrong_password(self):
+        """Test reveal password endpoint with wrong user password"""
+        if not self.test_account_with_password_id:
+            self.log_test("Reveal Password - Wrong Password", False, "No test account with password ID")
+            return False
+            
+        wrong_password_data = {"password": "WrongPassword123!"}
+        success, response = self.make_request('POST', f'accounts/{self.test_account_with_password_id}/reveal-password', wrong_password_data, 401)
+        if success and 'Invalid password' in response.get('detail', ''):
+            self.log_test("Reveal Password - Wrong Password", True)
+            return True
+        else:
+            self.log_test("Reveal Password - Wrong Password", False, f"Response: {response}")
+            return False
+
+    def test_reveal_password_correct_password(self):
+        """Test reveal password endpoint with correct user password"""
+        if not self.test_account_with_password_id:
+            self.log_test("Reveal Password - Correct Password", False, "No test account with password ID")
+            return False
+            
+        # Use the correct user password (from login)
+        correct_password_data = {"password": "Demo123!" if self.user_data and self.user_data.get('email') == 'demo@example.com' else "Test123!"}
+        success, response = self.make_request('POST', f'accounts/{self.test_account_with_password_id}/reveal-password', correct_password_data, 200)
+        if success and 'password' in response and response['password'] == 'MyStarlinkPassword123!':
+            self.log_test("Reveal Password - Correct Password", True)
+            return True
+        else:
+            self.log_test("Reveal Password - Correct Password", False, f"Response: {response}")
+            return False
+
+    def test_update_account_password(self):
+        """Test updating account password"""
+        if not self.test_account_with_password_id:
+            self.log_test("Update Account Password", False, "No test account with password ID")
+            return False
+            
+        update_data = {
+            "account_password": "UpdatedStarlinkPassword456!"
+        }
+        
+        success, response = self.make_request('PUT', f'accounts/{self.test_account_with_password_id}', update_data, 200)
+        if success and response.get('has_password') == True:
+            self.log_test("Update Account Password", True)
+            return True
+        else:
+            self.log_test("Update Account Password", False, f"Response: {response}")
+            return False
+
+    def test_reveal_updated_password(self):
+        """Test revealing the updated password"""
+        if not self.test_account_with_password_id:
+            self.log_test("Reveal Updated Password", False, "No test account with password ID")
+            return False
+            
+        # Use the correct user password (from login)
+        correct_password_data = {"password": "Demo123!" if self.user_data and self.user_data.get('email') == 'demo@example.com' else "Test123!"}
+        success, response = self.make_request('POST', f'accounts/{self.test_account_with_password_id}/reveal-password', correct_password_data, 200)
+        if success and 'password' in response and response['password'] == 'UpdatedStarlinkPassword456!':
+            self.log_test("Reveal Updated Password", True)
+            return True
+        else:
+            self.log_test("Reveal Updated Password", False, f"Response: {response}")
+            return False
+
+    def test_account_detail_has_password_flag(self):
+        """Test that account detail shows has_password flag correctly"""
+        if not self.test_account_with_password_id:
+            self.log_test("Account Detail Has Password Flag", False, "No test account with password ID")
+            return False
+            
+        success, response = self.make_request('GET', f'accounts/{self.test_account_with_password_id}', None, 200)
+        if success and response.get('has_password') == True:
+            self.log_test("Account Detail Has Password Flag", True)
+            return True
+        else:
+            self.log_test("Account Detail Has Password Flag", False, f"Response: {response}")
+            return False
+
+    def test_monthly_amount_display(self):
+        """Test that monthly_amount displays correctly without toFixed errors"""
+        if not self.test_account_id:
+            self.log_test("Monthly Amount Display", False, "No test account ID")
+            return False
+            
+        success, response = self.make_request('GET', f'accounts/{self.test_account_id}', None, 200)
+        if success and 'monthly_amount' in response:
+            monthly_amount = response['monthly_amount']
+            # Check that it's a valid number (not a string with toFixed errors)
+            if isinstance(monthly_amount, (int, float, str)):
+                try:
+                    float(monthly_amount)
+                    self.log_test("Monthly Amount Display", True)
+                    return True
+                except ValueError:
+                    self.log_test("Monthly Amount Display", False, f"Invalid monthly_amount format: {monthly_amount}")
+                    return False
+            else:
+                self.log_test("Monthly Amount Display", False, f"Unexpected monthly_amount type: {type(monthly_amount)}")
+                return False
+        else:
+            self.log_test("Monthly Amount Display", False, f"Response: {response}")
+            return False
+
     def run_all_tests(self):
         """Run all API tests in sequence"""
         print("🚀 Starting Starlink Manager API Tests")
