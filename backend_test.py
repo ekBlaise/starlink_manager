@@ -783,12 +783,27 @@ class StarlinkAPITester:
         if not self.test_create_account():
             print("❌ Account creation failed - skipping related tests")
             return self.get_summary()
+        
+        # Test account with password
+        self.test_create_account_with_password()
             
         self.test_get_accounts()
         self.test_get_account_detail()
         self.test_search_accounts()
         self.test_filter_accounts()
         self.test_update_account()
+        
+        # Test monthly amount display (toFixed fix)
+        self.test_monthly_amount_display()
+        
+        # Test encrypted password features
+        print("\n🔐 Encrypted Password Tests")
+        self.test_account_detail_has_password_flag()
+        self.test_reveal_password_no_password_provided()
+        self.test_reveal_password_wrong_password()
+        self.test_reveal_password_correct_password()
+        self.test_update_account_password()
+        self.test_reveal_updated_password()
         
         # Billing Tests
         print("\n💳 Billing Tests")
