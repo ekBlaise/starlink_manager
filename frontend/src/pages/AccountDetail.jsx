@@ -449,6 +449,46 @@ export default function AccountDetail() {
                 )}
               </div>
               <div>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider flex items-center gap-2">
+                  <Key className="w-3 h-3" /> Account Password
+                </Label>
+                {editing ? (
+                  <div className="relative mt-1">
+                    <Input 
+                      type={showNewPassword ? "text" : "password"}
+                      value={editData.account_password || ""} 
+                      onChange={(e) => setEditData({ ...editData, account_password: e.target.value })} 
+                      placeholder="Enter new password (leave empty to keep current)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-1">
+                    {account.has_password ? (
+                      <>
+                        <span className="text-muted-foreground">••••••••</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setShowPasswordModal(true)}
+                          className="h-7 text-xs"
+                        >
+                          <Eye className="w-3 h-3 mr-1" /> Reveal
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No password stored</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Monthly Amount</Label>
                 {editing ? (
                   <Input type="number" step="0.01" value={editData.monthly_amount} onChange={(e) => setEditData({ ...editData, monthly_amount: parseFloat(e.target.value) || 0 })} className="mt-1" />
