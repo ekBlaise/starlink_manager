@@ -186,7 +186,11 @@ export default function AccountDetail() {
   };
 
   const connectGmail = () => {
-    const redirectUri = encodeURIComponent(window.location.origin + `/accounts/${accountId}`);
+    // Store the account ID in localStorage for the callback to use
+    localStorage.setItem('gmail_connect_account_id', accountId);
+    
+    // Use a fixed callback URL that's registered in Google Console
+    const redirectUri = encodeURIComponent(window.location.origin + '/gmail-callback');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     window.location.href = authUrl;
