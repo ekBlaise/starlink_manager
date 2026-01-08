@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, 
   Satellite, 
@@ -24,7 +24,11 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Key
+  Key,
+  RefreshCw,
+  Inbox,
+  Link2,
+  Unlink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
