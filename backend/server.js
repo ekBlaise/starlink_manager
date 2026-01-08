@@ -206,12 +206,18 @@ async function initDatabase() {
     await sql`
       CREATE TABLE IF NOT EXISTS gmail_tokens (
         id SERIAL PRIMARY KEY,
-        user_id VARCHAR(50) UNIQUE NOT NULL,
+        account_id VARCHAR(50) UNIQUE NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
         access_token TEXT NOT NULL,
         refresh_token TEXT,
         expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+    
+    // Migrate old gmail_tokens table if needed - add account_id column
+    await sql`
+      ALTER TABLE gmail_tokens ADD COLUMN IF NOT EXISTS account_id VARCHAR(50)
     `;
     
     console.log('Database tables initialized successfully');
