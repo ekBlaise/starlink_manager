@@ -1189,45 +1189,11 @@ app.post('/api/reminders/test-sms', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== GMAIL SYNC ROUTES ====================
-// Check Gmail connection status
-app.get('/api/gmail/status', authenticateToken, async (req, res) => {
-  try {
-    const tokens = await sql`SELECT * FROM gmail_tokens WHERE user_id = ${req.user.user_id}`;
-    
-    if (tokens.length === 0) {
-      return res.json({ connected: false });
-    }
-    
-    // Check if token is still valid
-    const token = tokens[0];
-    const isExpired = new Date(token.expires_at) < new Date();
-    
-    res.json({ 
-      connected: true, 
-      hasRefreshToken: !!token.refresh_token,
-      isExpired 
-    });
-  } catch (error) {
-    console.error('Gmail status error:', error);
-    res.status(500).json({ detail: 'Failed to check Gmail status' });
-  }
-});
+// ==================== GMAIL SYNC ROUTES (Per Starlink Account) ====================
 
-// Disconnect Gmail
-app.post('/api/gmail/disconnect', authenticateToken, async (req, res) => {
-  try {
-    await sql`DELETE FROM gmail_tokens WHERE user_id = ${req.user.user_id}`;
-    res.json({ message: 'Gmail disconnected' });
-  } catch (error) {
-    console.error('Gmail disconnect error:', error);
-    res.status(500).json({ detail: 'Failed to disconnect Gmail' });
-  }
-});
-
-// Helper to refresh Gmail token
-async function refreshGmailToken(userId) {
-  const tokens = await sql`SELECT * FROM gmail_tokens WHERE user_id = ${userId}`;
+// Helper to refresh Gmail token for an account
+async function refreshAccountGmailToken(accountId) {
+  const tokens = await sql`SELECT * FROM gmail_tokens WHERE account_id = ${accountId}`;
   if (tokens.length === 0 || !tokens[0].refresh_token) {
     return null;
   }
@@ -1257,26 +1223,143 @@ async function refreshGmailToken(userId) {
   await sql`
     UPDATE gmail_tokens 
     SET access_token = ${data.access_token}, expires_at = ${expiresAt}
-    WHERE user_id = ${userId}
+    WHERE account_id = ${accountId}
   `;
   
   return data.access_token;
 }
 
-// Sync emails from Starlink - links emails to Starlink accounts based on their registered email addresses
-app.post('/api/gmail/sync', authenticateToken, async (req, res) => {
+// Check Gmail connection status for a specific Starlink account
+app.get('/api/accounts/:accountId/gmail/status', authenticateToken, async (req, res) => {
   try {
-    const tokens = await sql`SELECT * FROM gmail_tokens WHERE user_id = ${req.user.user_id}`;
+    const { accountId } = req.params;
+    
+    // Verify account ownership
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    const tokens = await sql`SELECT * FROM gmail_tokens WHERE account_id = ${accountId}`;
     
     if (tokens.length === 0) {
-      return res.status(400).json({ detail: 'Gmail not connected. Please sign in with Google first.' });
+      return res.json({ connected: false });
+    }
+    
+    const token = tokens[0];
+    const isExpired = token.expires_at ? new Date(token.expires_at) < new Date() : true;
+    
+    res.json({ 
+      connected: true, 
+      hasRefreshToken: !!token.refresh_token,
+      isExpired 
+    });
+  } catch (error) {
+    console.error('Gmail status error:', error);
+    res.status(500).json({ detail: 'Failed to check Gmail status' });
+  }
+});
+
+// Connect Gmail to a specific Starlink account (save OAuth tokens)
+app.post('/api/accounts/:accountId/gmail/connect', authenticateToken, async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { code, redirect_uri } = req.body;
+    
+    // Verify account ownership
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    if (!code) {
+      return res.status(400).json({ detail: 'Authorization code required' });
+    }
+    
+    const fetch = (await import('node-fetch')).default;
+    
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirect_uri,
+        grant_type: 'authorization_code',
+      }),
+    });
+    
+    const tokens = await tokenResponse.json();
+    
+    if (tokens.error) {
+      console.error('Google token error:', tokens);
+      return res.status(400).json({ detail: tokens.error_description || 'Failed to exchange code' });
+    }
+    
+    // Store tokens for this account
+    const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+    await sql`
+      INSERT INTO gmail_tokens (account_id, user_id, access_token, refresh_token, expires_at)
+      VALUES (${accountId}, ${req.user.user_id}, ${tokens.access_token}, ${tokens.refresh_token || null}, ${expiresAt})
+      ON CONFLICT (account_id) DO UPDATE SET 
+        access_token = ${tokens.access_token},
+        refresh_token = COALESCE(${tokens.refresh_token}, gmail_tokens.refresh_token),
+        expires_at = ${expiresAt}
+    `;
+    
+    res.json({ message: 'Gmail connected successfully' });
+  } catch (error) {
+    console.error('Gmail connect error:', error);
+    res.status(500).json({ detail: 'Failed to connect Gmail' });
+  }
+});
+
+// Disconnect Gmail from a specific Starlink account
+app.post('/api/accounts/:accountId/gmail/disconnect', authenticateToken, async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    
+    // Verify account ownership
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    await sql`DELETE FROM gmail_tokens WHERE account_id = ${accountId}`;
+    res.json({ message: 'Gmail disconnected' });
+  } catch (error) {
+    console.error('Gmail disconnect error:', error);
+    res.status(500).json({ detail: 'Failed to disconnect Gmail' });
+  }
+});
+
+// Sync emails for a specific Starlink account
+app.post('/api/accounts/:accountId/gmail/sync', authenticateToken, async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    
+    // Verify account ownership and get account details
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    const account = accounts[0];
+    
+    // Check if Gmail is connected for this account
+    const tokens = await sql`SELECT * FROM gmail_tokens WHERE account_id = ${accountId}`;
+    
+    if (tokens.length === 0) {
+      return res.status(400).json({ detail: 'Gmail not connected for this account. Please connect Gmail first.' });
     }
     
     let accessToken = tokens[0].access_token;
     
     // Check if token is expired and refresh
-    if (new Date(tokens[0].expires_at) < new Date()) {
-      accessToken = await refreshGmailToken(req.user.user_id);
+    if (tokens[0].expires_at && new Date(tokens[0].expires_at) < new Date()) {
+      accessToken = await refreshAccountGmailToken(accountId);
       if (!accessToken) {
         return res.status(400).json({ detail: 'Gmail token expired. Please reconnect Gmail.' });
       }
@@ -1284,17 +1367,9 @@ app.post('/api/gmail/sync', authenticateToken, async (req, res) => {
     
     const fetch = (await import('node-fetch')).default;
     
-    // Get user's Starlink accounts with their email addresses
-    const accounts = await sql`SELECT account_id, account_name, account_email, kit_number FROM starlink_accounts WHERE user_id = ${req.user.user_id}`;
-    
-    if (accounts.length === 0) {
-      return res.json({ synced: 0, message: 'No Starlink accounts found. Add accounts first to link emails.' });
-    }
-    
-    // Build search query to find emails sent TO any of the Starlink account emails
-    // This finds emails from Starlink that were sent to your Starlink account addresses
-    const accountEmails = accounts.map(a => a.account_email.toLowerCase());
-    const searchQuery = encodeURIComponent('from:starlink.com OR from:spacex.com');
+    // Search for emails from Starlink sent TO this account's email address
+    const accountEmail = account.account_email;
+    const searchQuery = encodeURIComponent(`(from:starlink.com OR from:spacex.com) to:${accountEmail}`);
     
     const messagesResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=50`,
@@ -1309,20 +1384,113 @@ app.post('/api/gmail/sync', authenticateToken, async (req, res) => {
     }
     
     if (!messagesData.messages || messagesData.messages.length === 0) {
-      return res.json({ synced: 0, message: 'No Starlink emails found' });
+      return res.json({ synced: 0, message: `No Starlink emails found for ${accountEmail}` });
     }
     
     let syncedCount = 0;
-    let linkedCount = 0;
-    let unmatchedCount = 0;
     
     // Process each message
     for (const msg of messagesData.messages.slice(0, 30)) {
-      // Get full message details including To, Cc, Delivered-To headers
       const msgResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Delivered-To&metadataHeaders=X-Original-To`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
+      
+      const msgData = await msgResponse.json();
+      if (msgData.error) continue;
+      
+      const headers = msgData.payload?.headers || [];
+      const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
+      const from = headers.find(h => h.name === 'From')?.value || '';
+      const to = headers.find(h => h.name === 'To')?.value || '';
+      const date = headers.find(h => h.name === 'Date')?.value || '';
+      
+      // Check if notification already exists
+      const existing = await sql`SELECT * FROM notifications WHERE notification_id LIKE ${'gmail_' + msg.id + '%'}`;
+      if (existing.length > 0) continue;
+      
+      // Create notification linked to this specific account
+      const notificationId = `gmail_${msg.id}_${Date.now()}`;
+      const emailDate = new Date(date);
+      const validDate = isNaN(emailDate.getTime()) ? new Date() : emailDate;
+      
+      await sql`
+        INSERT INTO notifications (notification_id, user_id, account_id, title, message, notification_type, created_at)
+        VALUES (
+          ${notificationId}, 
+          ${req.user.user_id}, 
+          ${accountId}, 
+          ${`Starlink: ${subject.substring(0, 150)}`}, 
+          ${`From: ${from}\nTo: ${to}\nDate: ${date}\n\n✓ Synced for: ${account.account_name}`},
+          'email_sync',
+          ${validDate}
+        )
+      `;
+      
+      syncedCount++;
+    }
+    
+    res.json({ 
+      synced: syncedCount, 
+      message: `Synced ${syncedCount} emails for ${account.account_name}` 
+    });
+  } catch (error) {
+    console.error('Gmail sync error:', error);
+    res.status(500).json({ detail: 'Failed to sync Gmail' });
+  }
+});
+
+// Get synced emails for a specific account
+app.get('/api/accounts/:accountId/gmail/emails', authenticateToken, async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    
+    // Verify account ownership
+    const accounts = await sql`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${req.user.user_id}`;
+    if (accounts.length === 0) {
+      return res.status(404).json({ detail: 'Account not found' });
+    }
+    
+    const emails = await sql`
+      SELECT * FROM notifications 
+      WHERE user_id = ${req.user.user_id} 
+      AND account_id = ${accountId} 
+      AND notification_type = 'email_sync' 
+      ORDER BY created_at DESC 
+      LIMIT 50
+    `;
+    res.json(emails);
+  } catch (error) {
+    console.error('Get emails error:', error);
+    res.status(500).json({ detail: 'Failed to fetch emails' });
+  }
+});
+
+// ==================== LEGACY GMAIL ROUTES (Keep for backward compatibility) ====================
+// Check Gmail connection status (user-level - deprecated, kept for settings page)
+app.get('/api/gmail/status', authenticateToken, async (req, res) => {
+  try {
+    // Check if any of user's accounts have Gmail connected
+    const tokens = await sql`
+      SELECT gt.*, sa.account_name 
+      FROM gmail_tokens gt 
+      JOIN starlink_accounts sa ON gt.account_id = sa.account_id 
+      WHERE gt.user_id = ${req.user.user_id}
+    `;
+    
+    if (tokens.length === 0) {
+      return res.json({ connected: false, accounts: [] });
+    }
+    
+    res.json({ 
+      connected: true, 
+      accounts: tokens.map(t => ({ accountId: t.account_id, accountName: t.account_name }))
+    });
+  } catch (error) {
+    console.error('Gmail status error:', error);
+    res.status(500).json({ detail: 'Failed to check Gmail status' });
+  }
+});
       
       const msgData = await msgResponse.json();
       
