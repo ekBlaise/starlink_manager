@@ -123,8 +123,14 @@ async function initDatabase() {
         status VARCHAR(20) DEFAULT 'active',
         last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         user_id VARCHAR(50) NOT NULL,
+        encrypted_password TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+    
+    // Add encrypted_password column if it doesn't exist (for existing tables)
+    await sql`
+      ALTER TABLE starlink_accounts ADD COLUMN IF NOT EXISTS encrypted_password TEXT
     `;
     
     await sql`
