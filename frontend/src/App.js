@@ -210,6 +210,11 @@ const AppRouter = () => {
           <Settings />
         </ProtectedRoute>
       } />
+      <Route path="/gmail-callback" element={
+        <ProtectedRoute>
+          <GmailCallback />
+        </ProtectedRoute>
+      } />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
