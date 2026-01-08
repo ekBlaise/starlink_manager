@@ -237,6 +237,7 @@ export default function AccountDetail() {
     fetchTickets();
     fetchExtenders();
     fetchDevices();
+    checkGmailStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
