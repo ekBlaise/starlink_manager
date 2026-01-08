@@ -456,6 +456,126 @@ module.exports = async function handler(req, res) {
       return res.json(emails);
     }
 
+    // PER-ACCOUNT GMAIL ROUTES
+    const accountGmailStatusMatch = route.match(/^accounts\/([^\/]+)\/gmail\/status$/);
+    if (accountGmailStatusMatch && method === 'GET') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = accountGmailStatusMatch[1];
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
+      
+      const tokens = await db`SELECT * FROM gmail_tokens WHERE account_id = ${accountId}`;
+      if (tokens.length === 0) return res.json({ connected: false });
+      
+      const token = tokens[0];
+      const isExpired = token.expires_at ? new Date(token.expires_at) < new Date() : true;
+      return res.json({ connected: true, hasRefreshToken: !!token.refresh_token, isExpired });
+    }
+
+    const accountGmailConnectMatch = route.match(/^accounts\/([^\/]+)\/gmail\/connect$/);
+    if (accountGmailConnectMatch && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = accountGmailConnectMatch[1];
+      const { code, redirect_uri } = req.body;
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
+      if (!code) return res.status(400).json({ detail: 'Authorization code required' });
+      
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET, redirect_uri, grant_type: 'authorization_code' }),
+      });
+      const tokens = await tokenResponse.json();
+      if (tokens.error) return res.status(400).json({ detail: tokens.error_description || 'Failed to exchange code' });
+      
+      const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+      await db`INSERT INTO gmail_tokens (account_id, user_id, access_token, refresh_token, expires_at) VALUES (${accountId}, ${user.user_id}, ${tokens.access_token}, ${tokens.refresh_token || null}, ${expiresAt}) ON CONFLICT (account_id) DO UPDATE SET access_token = ${tokens.access_token}, refresh_token = COALESCE(${tokens.refresh_token}, gmail_tokens.refresh_token), expires_at = ${expiresAt}`;
+      return res.json({ message: 'Gmail connected successfully' });
+    }
+
+    const accountGmailDisconnectMatch = route.match(/^accounts\/([^\/]+)\/gmail\/disconnect$/);
+    if (accountGmailDisconnectMatch && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = accountGmailDisconnectMatch[1];
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
+      
+      await db`DELETE FROM gmail_tokens WHERE account_id = ${accountId}`;
+      return res.json({ message: 'Gmail disconnected' });
+    }
+
+    const accountGmailSyncMatch = route.match(/^accounts\/([^\/]+)\/gmail\/sync$/);
+    if (accountGmailSyncMatch && method === 'POST') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = accountGmailSyncMatch[1];
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
+      const account = accounts[0];
+      
+      const tokens = await db`SELECT * FROM gmail_tokens WHERE account_id = ${accountId}`;
+      if (tokens.length === 0) return res.status(400).json({ detail: 'Gmail not connected for this account.' });
+      
+      let accessToken = tokens[0].access_token;
+      if (tokens[0].expires_at && new Date(tokens[0].expires_at) < new Date()) {
+        accessToken = await refreshGmailToken(user.user_id);
+        if (!accessToken) return res.status(400).json({ detail: 'Gmail token expired. Please reconnect.' });
+      }
+      
+      const searchQuery = encodeURIComponent(`(from:starlink.com OR from:spacex.com) to:${account.account_email}`);
+      const messagesResponse = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=50`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const messagesData = await messagesResponse.json();
+      
+      if (messagesData.error) return res.status(400).json({ detail: 'Failed to fetch emails' });
+      if (!messagesData.messages || messagesData.messages.length === 0) return res.json({ synced: 0, message: `No Starlink emails found for ${account.account_email}` });
+      
+      let syncedCount = 0;
+      for (const msg of messagesData.messages.slice(0, 30)) {
+        const msgResponse = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const msgData = await msgResponse.json();
+        if (msgData.error) continue;
+        
+        const headers = msgData.payload?.headers || [];
+        const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
+        const from = headers.find(h => h.name === 'From')?.value || '';
+        const to = headers.find(h => h.name === 'To')?.value || '';
+        const date = headers.find(h => h.name === 'Date')?.value || '';
+        
+        const existing = await db`SELECT * FROM notifications WHERE notification_id LIKE ${'gmail_' + msg.id + '%'}`;
+        if (existing.length > 0) continue;
+        
+        const notificationId = `gmail_${msg.id}_${Date.now()}`;
+        const emailDate = new Date(date);
+        const validDate = isNaN(emailDate.getTime()) ? new Date() : emailDate;
+        
+        await db`INSERT INTO notifications (notification_id, user_id, account_id, title, message, notification_type, created_at) VALUES (${notificationId}, ${user.user_id}, ${accountId}, ${`Starlink: ${subject.substring(0, 150)}`}, ${`From: ${from}\nTo: ${to}\nDate: ${date}\n\n✓ Synced for: ${account.account_name}`}, 'email_sync', ${validDate})`;
+        syncedCount++;
+      }
+      
+      return res.json({ synced: syncedCount, message: `Synced ${syncedCount} emails for ${account.account_name}` });
+    }
+
+    const accountGmailEmailsMatch = route.match(/^accounts\/([^\/]+)\/gmail\/emails$/);
+    if (accountGmailEmailsMatch && method === 'GET') {
+      const { user, error } = await authenticateRequest(req);
+      if (error) return res.status(401).json({ detail: error });
+      const accountId = accountGmailEmailsMatch[1];
+      
+      const accounts = await db`SELECT * FROM starlink_accounts WHERE account_id = ${accountId} AND user_id = ${user.user_id}`;
+      if (accounts.length === 0) return res.status(404).json({ detail: 'Account not found' });
+      
+      const emails = await db`SELECT * FROM notifications WHERE user_id = ${user.user_id} AND account_id = ${accountId} AND notification_type = 'email_sync' ORDER BY created_at DESC LIMIT 50`;
+      return res.json(emails);
+    }
+
     // ACCOUNTS ROUTES
     if (route === 'accounts') {
       const { user, error } = await authenticateRequest(req);
