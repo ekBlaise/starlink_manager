@@ -12,7 +12,7 @@ import AccountDetail from "@/pages/AccountDetail";
 import Settings from "@/pages/Settings";
 import Layout from "@/components/Layout";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 export const API = `${BACKEND_URL}/api`;
 
 // Auth Context
