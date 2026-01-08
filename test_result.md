@@ -91,6 +91,54 @@ backend:
         agent: "testing"
         comment: "✅ FIXED - Added gmail_tokens table creation to initDatabase() function in server.js. Table now properly created on startup with correct schema (user_id, access_token, refresh_token, expires_at, created_at). All Gmail endpoints now functional"
 
+  - task: "Account Details Page - toFixed fix"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Monthly amount displays correctly without toFixed errors. Backend returns proper numeric values that can be parsed as float. Account detail endpoint working correctly."
+
+  - task: "Encrypted Password Feature - Create Account"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - POST /api/accounts with account_password field works correctly. Response includes has_password: true when password is provided. Password is encrypted using AES-256-CBC encryption."
+
+  - task: "Encrypted Password Feature - Reveal Password"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - POST /api/accounts/:accountId/reveal-password endpoint working correctly: Returns 400 error when no password provided, returns 401 error with wrong user password, returns decrypted password with correct user password. Security validation working properly."
+
+  - task: "Encrypted Password Feature - Update Password"
+    implemented: true
+    working: true
+    file: "/app/backend/server.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - PUT /api/accounts/:accountId with account_password field works correctly. Password is encrypted and stored, has_password flag updated properly. Updated password can be revealed successfully."
+
 frontend:
   - task: "Login Page Rebranding"
     implemented: true
