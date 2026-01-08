@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/Accounts";
 import AccountDetail from "@/pages/AccountDetail";
 import Settings from "@/pages/Settings";
+import GmailCallback from "@/pages/GmailCallback";
 import Layout from "@/components/Layout";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
