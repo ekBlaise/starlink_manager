@@ -193,6 +193,28 @@ class StarlinkAPITester:
             self.log_test("Create Starlink Account", False, f"Response: {response}")
             return False
 
+    def test_create_account_with_password(self):
+        """Test creating a Starlink account with encrypted password"""
+        account_data = {
+            "account_name": "Test Starlink Account with Password",
+            "location": "Test City, NY",
+            "account_email": "starlink.password.test@example.com",
+            "kit_number": "UT-12345-67891",
+            "notes": "Test account with password for automated testing",
+            "billing_day": 15,
+            "monthly_amount": 120.00,
+            "account_password": "MyStarlinkPassword123!"
+        }
+        
+        success, response = self.make_request('POST', 'accounts', account_data, 200)
+        if success and 'account_id' in response and response.get('has_password') == True:
+            self.test_account_with_password_id = response['account_id']
+            self.log_test("Create Starlink Account with Password", True)
+            return True
+        else:
+            self.log_test("Create Starlink Account with Password", False, f"Response: {response}")
+            return False
+
     def test_get_accounts(self):
         """Test getting accounts list"""
         success, response = self.make_request('GET', 'accounts', None, 200)
