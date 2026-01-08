@@ -18,6 +18,7 @@ class StarlinkAPITester:
         
         # Test data storage
         self.test_account_id = None
+        self.test_account_with_password_id = None
         self.test_billing_id = None
         self.test_ticket_id = None
         self.test_extender_id = None
