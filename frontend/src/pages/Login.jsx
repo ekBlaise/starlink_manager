@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import { useAuth, API } from "../App";
 
-const GOOGLE_CLIENT_ID = "1076605813360-tkleimc080a64nhu4ab4f4rk9ifj6qps.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "148343116482-s4ucf6tr9fa92pv03ds9u96eg8pjc89f.apps.googleusercontent.com";
 
 export default function Login() {
   const auth = useAuth();
