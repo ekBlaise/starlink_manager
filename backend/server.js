@@ -52,7 +52,7 @@ const decryptPassword = (encrypted) => {
 };
 
 // Google OAuth Config
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '148343116482-s4ucf6tr9fa92pv03ds9u96eg8pjc89f.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // Twilio Config
